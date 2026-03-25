@@ -1,0 +1,144 @@
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.header {
+    margin-bottom: var(--spacing-xl);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: var(--spacing-xl);
+}
+
+.mainColumn {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.sideColumn {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.statBox {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-lg);
+    background-color: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.statLabel {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.statValue {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary-600);
+}
+
+.emptySnapshots {
+    text-align: center;
+    padding: var(--spacing-2xl) 0;
+    color: var(--color-text-tertiary);
+}
+
+.snapshotGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.snapshotCard {
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: transform var(--transition-fast);
+}
+
+.snapshotCard:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.snapshotImageContainer {
+    position: relative;
+    aspect-ratio: 4/3;
+    background-color: #000;
+}
+
+.snapshotImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.snapshotBadge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+}
+
+.snapshotInfo {
+    padding: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.snapshotLabel {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+}
+
+.snapshotTime {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+}
+
+.detailList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.detailItem {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-size-sm);
+}
+
+.detailLabel {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+}
+
+.detailValue {
+    color: var(--color-text-primary);
+    text-align: right;
+}
+
+.exportButtons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}

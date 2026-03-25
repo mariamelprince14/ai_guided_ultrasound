@@ -1,0 +1,22 @@
+.layout {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--color-bg-primary);
+}
+
+.main {
+    flex: 1;
+    margin-left: 260px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.content {
+    flex: 1;
+    padding: var(--spacing-lg);
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}

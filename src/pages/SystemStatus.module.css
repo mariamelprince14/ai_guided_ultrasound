@@ -1,0 +1,103 @@
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.header {
+    margin-bottom: var(--spacing-xl);
+}
+
+.statsRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.statusGrid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.statusItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.statusLabel {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-medium);
+}
+
+.statusValue {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-semibold);
+}
+
+.statusValueMono {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    color: var(--color-primary-600);
+}
+
+.logSection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.logHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logPanel {
+    background-color: #1a1f36;
+    color: #fff;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    font-family: var(--font-family-mono);
+    font-size: 13px;
+    height: 400px;
+    overflow-y: auto;
+    border: 4px solid #333;
+}
+
+.logEntry {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: 4px;
+    line-height: var(--line-height-tight);
+}
+
+.logTime {
+    color: #718096;
+    white-space: nowrap;
+}
+
+.logLevel {
+    font-weight: bold;
+    width: 50px;
+    white-space: nowrap;
+}
+
+.info .logLevel {
+    color: #5a98d4;
+}
+
+.warn .logLevel {
+    color: #f59e0b;
+}
+
+.error .logLevel {
+    color: #dc2626;
+}
+
+.logMessage {
+    word-break: break-all;
+}

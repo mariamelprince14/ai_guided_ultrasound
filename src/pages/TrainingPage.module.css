@@ -1,0 +1,101 @@
+.trainingPage {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+.workspaceHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: rgba(var(--color-background-elevated-rgb), 0.5);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.objective {
+    font-size: 1.25rem;
+    margin: 0;
+    font-weight: 500;
+}
+
+.target {
+    color: var(--color-primary-500);
+    font-weight: 700;
+}
+
+.difficulty {
+    font-size: 0.875rem;
+    padding: 0.4rem 0.8rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.viewerContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1;
+    min-height: 0;
+}
+
+.instructionsPanel {
+    padding: 1.5rem;
+    background: rgba(var(--color-primary-500-rgb), 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(var(--color-primary-500-rgb), 0.1);
+}
+
+.instructionsPanel h3 {
+    margin-top: 0;
+    color: var(--color-primary-400);
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.instructionsPanel p {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+}
+
+.infoBox {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+}
+
+.infoBox h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.85rem;
+    color: var(--color-primary-300);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.organList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.organList li {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.organList li::before {
+    content: "•";
+    color: var(--color-primary-500);
+}

@@ -1,0 +1,59 @@
+.workspace {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+    gap: var(--spacing-md);
+}
+
+.header {
+    flex-shrink: 0;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 350px 1fr 350px;
+    gap: var(--spacing-lg);
+    flex: 1;
+    min-height: 0;
+    /* Important for children to scroll */
+}
+
+.leftPanel,
+.centerPanel,
+.rightPanel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: var(--spacing-md);
+    overflow-y: auto;
+    padding-right: var(--spacing-xs);
+    flex: 1;
+}
+
+/* Custom scrollbar for panels */
+.leftPanel::-webkit-scrollbar,
+.centerPanel::-webkit-scrollbar,
+.rightPanel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.leftPanel::-webkit-scrollbar-thumb,
+.centerPanel::-webkit-scrollbar-thumb,
+.rightPanel::-webkit-scrollbar-thumb {
+    background: var(--color-border-light);
+    border-radius: var(--radius-full);
+}
+
+@media (max-width: 1400px) {
+    .grid {
+        grid-template-columns: 300px 1fr 300px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .grid {
+        grid-template-columns: 280px 1fr 280px;
+    }
+}

@@ -1,0 +1,41 @@
+.workspaceHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: var(--color-primary-50);
+    border: 1px solid var(--color-primary-100);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-sm);
+}
+
+.objective {
+    font-size: var(--font-size-base);
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+
+.target {
+    color: var(--color-primary-600);
+    font-weight: var(--font-weight-bold);
+}
+
+.difficulty {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-tertiary);
+}
+
+.difficulty strong {
+    color: var(--color-text-primary);
+}
+
+.viewerContainer {
+    flex-shrink: 0;
+    min-height: 300px;
+    height: 300px;
+    margin-bottom: var(--spacing-sm);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}

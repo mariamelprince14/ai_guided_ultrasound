@@ -1,0 +1,128 @@
+.controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    background: var(--color-bg-secondary);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-light);
+}
+
+/* Full width sections */
+.sectionFull {
+    grid-column: span 2;
+}
+
+.sectionTitle {
+    font-size: 10px;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary-600);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+}
+
+.sliderGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.sliderLabel {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+}
+
+.slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: var(--color-border-light);
+    border-radius: var(--radius-full);
+    outline: none;
+    cursor: pointer;
+    margin: 4px 0;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--color-primary-500);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border: 2px solid white;
+}
+
+.slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    background: var(--color-primary-600);
+}
+
+.actions {
+    grid-column: span 2;
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--color-border-light);
+}
+
+.actions>button {
+    flex: 1;
+}
+
+.lockOption {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+}
+
+.lockOption label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+}
+
+.poseReadout {
+    grid-column: span 2;
+    margin-top: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background-color: #1a1f36;
+    border-radius: var(--radius-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--color-border-dark);
+}
+
+.readoutItem {
+    display: flex;
+    gap: var(--spacing-xs);
+    font-family: var(--font-family-mono);
+    font-size: 10px;
+    color: #00ff00;
+    opacity: 0.9;
+}
+
+.readoutLabel {
+    color: #00ff00;
+    font-weight: var(--font-weight-bold);
+}

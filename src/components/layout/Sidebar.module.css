@@ -1,0 +1,95 @@
+.sidebar {
+    width: 260px;
+    height: 100vh;
+    background-color: var(--color-bg-elevated);
+    border-right: 1px solid var(--color-border-light);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    top: 0;
+}
+
+.header {
+    padding: var(--spacing-xl) var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary-800);
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin: var(--spacing-xs) 0 0 0;
+}
+
+.nav {
+    flex: 1;
+    padding: var(--spacing-lg) 0;
+    overflow-y: auto;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: all var(--transition-base);
+    border-right: 3px solid transparent;
+}
+
+.navItem:hover {
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+}
+
+.navItem.active {
+    background-color: var(--color-primary-50);
+    color: var(--color-primary-700);
+    border-right-color: var(--color-primary-500);
+    font-weight: var(--font-weight-semibold);
+}
+
+.icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary-300);
+    transition: color var(--transition-base);
+}
+
+.navItem:hover .icon,
+.navItem.active .icon {
+    color: var(--color-primary-600);
+}
+
+.label {
+    font-size: var(--font-size-sm);
+}
+
+.footer {
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--color-border-light);
+    text-align: center;
+}
+
+.disclaimer {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-warning);
+    margin: 0;
+}
+
+.disclaimerSub {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+    margin: var(--spacing-xs) 0 0 0;
+}
