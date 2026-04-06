@@ -19,29 +19,19 @@ import {
 } from 'lucide-react';
 import { validateSessionConfig } from '@utils/validation';
 import { ABDOMINAL_ORGANS } from '../constants/organs';
-import type { CTVolume, ProbeType, Difficulty, SessionConfig } from '@/types';
+import type { ProbeType, Difficulty, SessionConfig } from '@/types';
+import { CaseSelector } from '@components/workspace/CaseSelector';
 import styles from './SessionSetup.module.css';
-
-// Mock CT volumes (replace with API call in production)
-const mockCTVolumes: CTVolume[] = Array.from({ length: 40 }, (_, i) => ({
-    id: `ct-${(i + 1).toString().padStart(3, '0')}`,
-    name: `CT Abdomen Volume ${i + 1}`,
-    voxelSpacing: [0.5 + Math.random() * 0.2, 0.5 + Math.random() * 0.2, 1.0 + Math.random() * 0.5],
-    sliceCount: 150 + Math.floor(Math.random() * 150),
-    availableOrgans: [...ABDOMINAL_ORGANS]
-        .map((o: string) => o.toLowerCase())
-        .sort(() => 0.5 - Math.random())
-        .slice(0, 3 + Math.floor(Math.random() * 4)),
-}));
 
 const availableOrgans = ABDOMINAL_ORGANS.map((o: string) => o.toLowerCase());
 
 export const SessionSetup: React.FC = () => {
     const navigate = useNavigate();
-    const { selectedMode, setConfig, setSessionId, setSessionStatus, setConnectionStatus } =
-        useAppStore();
+    const { 
+        selectedMode, setConfig, setSessionId, setSessionStatus, setConnectionStatus,
+        cases, selectedCaseId, setSelectedCaseId, setVolumeInfo
+    } = useAppStore();
 
-    const [ctVolume, setCTVolume] = useState<CTVolume | null>(null);
     const [probeType, setProbeType] = useState<ProbeType>('curvilinear');
     const [targetOrgans, setTargetOrgans] = useState<string[]>([]);
     const [difficulty, setDifficulty] = useState<Difficulty>('beginner');
@@ -58,14 +48,14 @@ export const SessionSetup: React.FC = () => {
     };
 
     const handleStartSession = async () => {
-        if (!selectedMode || !ctVolume) {
+        if (!selectedMode || !selectedCaseId) {
             setErrors(['Please complete all required fields']);
             return;
         }
 
         const config: Partial<SessionConfig> = {
             mode: selectedMode,
-            ctVolume,
+            caseId: selectedCaseId,
             probeType,
             targetOrgans,
             difficulty,
@@ -86,12 +76,16 @@ export const SessionSetup: React.FC = () => {
 
             setConfig(config as SessionConfig);
             setSessionId(response.sessionId);
+            setVolumeInfo(response.volumeInfo);
             setSessionStatus('running');
 
             // Connect WebSocket
-            wsService.connect(response.wsUrl);
-            wsService.onConnectionStatus((status) => {
-                setConnectionStatus(status);
+            wsService.disconnect();
+            wsService.connect(response.sessionId);
+            wsService.onConnection((status) => {
+                if (status === 'connected') setConnectionStatus('connected');
+                else if (status === 'disconnected') setConnectionStatus('reconnecting');
+                else setConnectionStatus('offline');
             });
 
             navigate('/workspace');
@@ -102,6 +96,8 @@ export const SessionSetup: React.FC = () => {
             setIsLoading(false);
         }
     };
+
+    const selectedCase = cases.find(c => c.id === selectedCaseId);
 
     return (
         <div className={styles.container}>
@@ -119,25 +115,12 @@ export const SessionSetup: React.FC = () => {
                     {/* CT Volume Selection */}
                     <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Database size={18} /> CT Volume Selection</span>}>
                         <div className={styles.formGroup}>
-                            <label className={styles.label}>Select Volume *</label>
-                            <select
-                                className={styles.select}
-                                value={ctVolume?.id || ''}
-                                onChange={(e) => {
-                                    const selected = mockCTVolumes.find((v) => v.id === e.target.value);
-                                    setCTVolume(selected || null);
-                                }}
-                            >
-                                <option value="">-- Select a CT volume --</option>
-                                {mockCTVolumes.map((volume) => (
-                                    <option key={volume.id} value={volume.id}>
-                                        {volume.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <CaseSelector 
+                                onSelect={(id) => setSelectedCaseId(id)}
+                            />
                         </div>
 
-                        {ctVolume && (
+                        {selectedCase && (
                             <div className={styles.metadata}>
                                 <h4>
                                     <Info size={14} style={{ marginRight: '6px' }} />
@@ -146,19 +129,15 @@ export const SessionSetup: React.FC = () => {
                                 <div className={styles.metadataGrid}>
                                     <div>
                                         <span className={styles.metadataLabel}>Volume ID:</span>
-                                        <span>{ctVolume.id}</span>
+                                        <span>{selectedCase.id}</span>
                                     </div>
                                     <div>
-                                        <span className={styles.metadataLabel}>Voxel Spacing:</span>
-                                        <span>{ctVolume.voxelSpacing.join(' × ')} mm</span>
+                                        <span className={styles.metadataLabel}>Name:</span>
+                                        <span>{selectedCase.name}</span>
                                     </div>
                                     <div>
-                                        <span className={styles.metadataLabel}>Slice Count:</span>
-                                        <span>{ctVolume.sliceCount}</span>
-                                    </div>
-                                    <div>
-                                        <span className={styles.metadataLabel}>Available Organs:</span>
-                                        <span>{ctVolume.availableOrgans.join(', ')}</span>
+                                        <span className={styles.metadataLabel}>Segmentation:</span>
+                                        <span>{selectedCase.has_segmentation ? 'Available' : 'None'}</span>
                                     </div>
                                 </div>
                             </div>
@@ -277,7 +256,7 @@ export const SessionSetup: React.FC = () => {
                             <div className={styles.summaryItem}>
                                 <span className={styles.summaryLabel}>CT Volume:</span>
                                 <span className={styles.summaryValue}>
-                                    {ctVolume?.name || 'Not selected'}
+                                    {selectedCase?.name || 'Not selected'}
                                 </span>
                             </div>
                             <div className={styles.summaryItem}>
@@ -319,7 +298,7 @@ export const SessionSetup: React.FC = () => {
                             size="large"
                             fullWidth
                             onClick={handleStartSession}
-                            disabled={isLoading || !ctVolume || targetOrgans.length === 0}
+                            disabled={isLoading || !selectedCaseId || targetOrgans.length === 0}
                         >
                             <span style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
                                 {isLoading ? <Activity size={20} className={styles.spin} /> : <Play size={20} fill="currentColor" />}

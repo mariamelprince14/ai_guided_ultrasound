@@ -1,0 +1,122 @@
+﻿E:\downloads\usdemo\ct.volumes\3d test\test11\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test11\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test11\7 Unnamed Series_1 segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test11\7 Unnamed Series_1 segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test11\7 Unnamed Series_1 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test11\7 Unnamed Series_1.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test12\13 Unnamed Series segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test12\13 Unnamed Series segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test12\13 Unnamed Series segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test12\13 Unnamed Series.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test12\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test12\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test13\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test13\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test13\6 Unnamed Series_1 segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test13\6 Unnamed Series_1 segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test13\6 Unnamed Series_1 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test13\6 Unnamed Series_1.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test15\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test15\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test15\5 Unnamed Series segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test15\5 Unnamed Series segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test15\5 Unnamed Series segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test15\5 Unnamed Series.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test17\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test17\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test17\7 Unnamed Series segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test17\7 Unnamed Series segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test17\7 Unnamed Series segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test17\7 Unnamed Series.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test20\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test20\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test20\4 Unnamed Series segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test20\4 Unnamed Series segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test20\4 Unnamed Series segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test20\4 Unnamed Series.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test3\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test3\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test3\4 Unnamed Series_2 segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test3\4 Unnamed Series_2 segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test3\4 Unnamed Series_2 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test3\4 Unnamed Series_2.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test31\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test31\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test31\6 Unnamed Series_5 segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test31\6 Unnamed Series_5 segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test31\6 Unnamed Series_5 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test31\6 Unnamed Series_5.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test32\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test32\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test32\6 Unnamed Series_2 segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test32\6 Unnamed Series_2 segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test32\6 Unnamed Series_2 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test32\6 Unnamed Series_2.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test33\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test33\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test33\4 Unnamed Series_1 segmentation_ColorTable_1.csv
+E:\downloads\usdemo\ct.volumes\3d test\test33\7 Unnamed Series_2 segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test33\7 Unnamed Series_2 segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test33\7 Unnamed Series_2 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test33\7 Unnamed Series_2.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test34\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test34\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test34\6 Unnamed Series segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test34\6 Unnamed Series segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test34\6 Unnamed Series segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test34\6 Unnamed Series.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test35\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test35\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test35\6 Unnamed Series segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test35\6 Unnamed Series segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test35\6 Unnamed Series segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test35\6 Unnamed Series.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test36\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test36\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test36\6 Unnamed Series_4 segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test36\6 Unnamed Series_4 segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test36\6 Unnamed Series_4 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test36\6 Unnamed Series_4.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test37\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test37\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test37\6 Unnamed Series_3 segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test37\6 Unnamed Series_3 segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test37\6 Unnamed Series_3 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test37\6 Unnamed Series_3.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test38\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test38\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test38\6 Unnamed Series segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test38\6 Unnamed Series segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test38\6 Unnamed Series segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test38\6 Unnamed Series.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test39\13 Unnamed Series segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test39\13 Unnamed Series segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test39\13 Unnamed Series segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test39\13 Unnamed Series.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test39\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test39\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test4\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test4\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test4\4 Unnamed Series segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test4\4 Unnamed Series segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test4\4 Unnamed Series segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test4\4 Unnamed Series.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test40\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test40\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test40\6 Unnamed Series_2 segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test40\6 Unnamed Series_2 segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test40\6 Unnamed Series_2 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test40\6 Unnamed Series_2.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test7\13 Unnamed Series_1 segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test7\13 Unnamed Series_1 segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test7\13 Unnamed Series_1 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test7\13 Unnamed Series_1.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test7\2025-12-07-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test7\2025-12-07-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test7\4 Unnamed Series_1 segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test9\2025-12-04-Scene.mrml
+E:\downloads\usdemo\ct.volumes\3d test\test9\2025-12-04-Scene.png
+E:\downloads\usdemo\ct.volumes\3d test\test9\3 Unnamed Series segmentation-label.nii.gz
+E:\downloads\usdemo\ct.volumes\3d test\test9\3 Unnamed Series segmentation.seg.nrrd
+E:\downloads\usdemo\ct.volumes\3d test\test9\3 Unnamed Series segmentation_ColorTable.csv
+E:\downloads\usdemo\ct.volumes\3d test\test9\3 Unnamed Series.nii.gz

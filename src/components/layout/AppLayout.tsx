@@ -8,6 +8,8 @@ interface AppLayoutProps {
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+    console.log('AppLayout rendering, children:', children)
+    
     return (
         <div className={styles.layout}>
             <Sidebar />

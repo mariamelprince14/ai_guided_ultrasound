@@ -11,6 +11,8 @@ import {
 import styles from './Sidebar.module.css';
 
 export const Sidebar: React.FC = () => {
+    console.log('Sidebar rendering')
+    
     const navItems = [
         { path: '/', label: 'Mode Selection', icon: <LayoutDashboard size={18} /> },
         { path: '/setup', label: 'Session Setup', icon: <Settings size={18} /> },

@@ -91,7 +91,7 @@ export const ProgressResults: React.FC = () => {
                             </div>
                             <div className={styles.detailItem}>
                                 <span className={styles.detailLabel}>CT Volume:</span>
-                                <span className={styles.detailValue}>{config?.ctVolume.name || 'N/A'}</span>
+                                <span className={styles.detailValue}>{config?.caseId || 'N/A'}</span>
                             </div>
                             <div className={styles.detailItem}>
                                 <span className={styles.detailLabel}>Probe Type:</span>

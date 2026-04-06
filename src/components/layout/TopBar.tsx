@@ -8,6 +8,8 @@ import { Power, Globe, CheckCircle2, AlertCircle, Circle } from 'lucide-react';
 import styles from './TopBar.module.css';
 
 export const TopBar: React.FC = () => {
+    console.log('TopBar rendering')
+    
     const { status, connectionStatus, selectedMode, sessionId, setSessionStatus } = useAppStore();
     const [showStopModal, setShowStopModal] = useState(false);
 

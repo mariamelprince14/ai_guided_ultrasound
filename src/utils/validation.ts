@@ -12,8 +12,8 @@ export function validateSessionConfig(config: Partial<SessionConfig>): Validatio
         errors.push({ field: 'mode', message: 'Training mode is required' });
     }
 
-    if (!config.ctVolume) {
-        errors.push({ field: 'ctVolume', message: 'CT volume selection is required' });
+    if (!config.caseId) {
+        errors.push({ field: 'caseId', message: 'CT volume selection is required' });
     }
 
     if (!config.probeType) {

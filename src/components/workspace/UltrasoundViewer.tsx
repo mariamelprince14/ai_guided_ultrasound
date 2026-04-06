@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { useAppStore } from '@store/useAppStore';
 import { Badge } from '@components/ui/Badge';
 import { Button } from '@components/ui/Button';
-import { apiService } from '@services/api';
+import { wsService } from '@services/websocket';
 import { getQualityLabel } from '@utils/formatters';
 import {
     Play,
@@ -19,7 +19,7 @@ interface UltrasoundViewerProps {
 }
 
 export const UltrasoundViewer: React.FC<UltrasoundViewerProps> = ({ imageSrc }) => {
-    const { sessionId, status, currentFrame, currentFeedback, config } = useAppStore();
+    const { sessionId, status, setSessionStatus, currentFrame, currentFeedback, config } = useAppStore();
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -42,21 +42,13 @@ export const UltrasoundViewer: React.FC<UltrasoundViewerProps> = ({ imageSrc }) 
 
     const handleCapture = async () => {
         if (sessionId) {
-            try {
-                await apiService.captureSnapshot(sessionId);
-            } catch (error) {
-                console.error('Failed to capture snapshot:', error);
-            }
+            wsService.sendCapture();
         }
     };
 
     const handleFreeze = async () => {
         if (sessionId) {
-            try {
-                await apiService.freezeStream(sessionId, status === 'running');
-            } catch (error) {
-                console.error('Failed to toggle freeze:', error);
-            }
+            setSessionStatus(status === 'paused' ? 'running' : 'paused');
         }
     };
 

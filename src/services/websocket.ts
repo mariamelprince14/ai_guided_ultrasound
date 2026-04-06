@@ -1,140 +1,146 @@
-import { io, Socket } from 'socket.io-client';
+/**
+ * websocket.ts
+ * ─────────────
+ * WebSocket service for real-time probe→ultrasound-frame streaming.
+ *
+ * Protocol:
+ *   Send:    { type: "probeUpdate", data: { x, y, z, pitch, yaw, roll } }
+ *            { type: "settingsUpdate", data: { wl, ww, showSeg, planeSizeMm, resolution } }
+ *            { type: "capture" }
+ *            { type: "ping" }
+ *   Receive: { type: "ultrasoundFrame", data: { image: string, timestamp: number } }
+ *            { type: "sessionEvent", data: { event, message, timestamp } }
+ *            { type: "captureResult", data: { success, frame_index, frame_path, pose_path } }
+ */
+
 import type { WSMessage } from '@/types';
 
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
+
 type MessageHandler = (message: WSMessage) => void;
+type ConnectionHandler = (status: 'connected' | 'disconnected' | 'error') => void;
 
-interface ConnectionState {
-    socket: Socket | null;
-    messageHandlers: Set<MessageHandler>;
-    reconnectAttempts: number;
-    maxReconnectAttempts: number;
-    reconnectDelay: number;
-    connectionStatusCallback: ((status: 'connected' | 'reconnecting' | 'offline') => void) | null;
-}
+class WebSocketService {
+    private ws: WebSocket | null = null;
+    private messageHandlers: Set<MessageHandler> = new Set();
+    private connectionHandlers: Set<ConnectionHandler> = new Set();
+    private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    private currentSessionId: string | null = null;
+    private shouldReconnect = true;
+    private reconnectDelay = 2000;
+    private pingInterval: ReturnType<typeof setInterval> | null = null;
 
-const state: ConnectionState = {
-    socket: null,
-    messageHandlers: new Set<MessageHandler>(),
-    reconnectAttempts: 0,
-    maxReconnectAttempts: 5,
-    reconnectDelay: 1000,
-    connectionStatusCallback: null,
-};
-
-const setupEventListeners = () => {
-    if (!state.socket) return;
-
-    state.socket.on('connect', () => {
-        console.log('WebSocket connected');
-        state.reconnectAttempts = 0;
-        notifyConnectionStatus('connected');
-    });
-
-    state.socket.on('disconnect', (reason) => {
-        console.log('WebSocket disconnected:', reason);
-        notifyConnectionStatus('offline');
-    });
-
-    state.socket.on('reconnect_attempt', (attemptNumber) => {
-        console.log(`WebSocket reconnection attempt ${attemptNumber}`);
-        state.reconnectAttempts = attemptNumber;
-        notifyConnectionStatus('reconnecting');
-    });
-
-    state.socket.on('reconnect_failed', () => {
-        console.error('WebSocket reconnection failed');
-        notifyConnectionStatus('offline');
-    });
-
-    state.socket.on('error', (error) => {
-        console.error('WebSocket error:', error);
-    });
-
-    state.socket.on('message', (message: WSMessage) => {
-        handleIncomingMessage(message);
-    });
-
-    state.socket.on('ultrasoundFrame', (data) => {
-        handleIncomingMessage({ type: 'ultrasoundFrame', data });
-    });
-
-    state.socket.on('aiFeedback', (data) => {
-        handleIncomingMessage({ type: 'aiFeedback', data });
-    });
-
-    state.socket.on('poseUpdate', (data) => {
-        handleIncomingMessage({ type: 'poseUpdate', data });
-    });
-
-    state.socket.on('sessionEvent', (data) => {
-        handleIncomingMessage({ type: 'sessionEvent', data });
-    });
-};
-
-const handleIncomingMessage = (message: WSMessage) => {
-    state.messageHandlers.forEach((handler) => {
-        try {
-            handler(message);
-        } catch (error) {
-            console.error('Error in message handler:', error);
-        }
-    });
-};
-
-const notifyConnectionStatus = (status: 'connected' | 'reconnecting' | 'offline') => {
-    if (state.connectionStatusCallback) {
-        state.connectionStatusCallback(status);
+    connect(sessionId: string): void {
+        this.currentSessionId = sessionId;
+        this.shouldReconnect = true;
+        this._connect();
     }
-};
 
-export const wsService = {
-    connect(wsUrl: string): void {
-        if (state.socket?.connected) {
-            console.warn('WebSocket already connected');
-            return;
+    private _connect(): void {
+        if (!this.currentSessionId) return;
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.close();
         }
 
-        state.socket = io(wsUrl, {
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            reconnectionAttempts: state.maxReconnectAttempts,
-            reconnectionDelay: state.reconnectDelay,
-            reconnectionDelayMax: 5000,
-        });
+        const url = `${WS_BASE_URL}/ws/${this.currentSessionId}`;
+        console.log(`[WS] Connecting to ${url}`);
+        this.ws = new WebSocket(url);
 
-        setupEventListeners();
-    },
-
-    onMessage(handler: MessageHandler): () => void {
-        state.messageHandlers.add(handler);
-        return () => {
-            state.messageHandlers.delete(handler);
+        this.ws.onopen = () => {
+            console.log('[WS] Connected');
+            this.reconnectDelay = 2000;
+            this.connectionHandlers.forEach(h => h('connected'));
+            // Keep-alive ping every 20s
+            this.pingInterval = setInterval(() => {
+                this.send({ type: 'ping', data: {} });
+            }, 20_000);
         };
-    },
 
-    onConnectionStatus(callback: (status: 'connected' | 'reconnecting' | 'offline') => void): void {
-        state.connectionStatusCallback = callback;
-    },
+        this.ws.onmessage = (event) => {
+            try {
+                const msg: WSMessage = JSON.parse(event.data);
+                this.messageHandlers.forEach(h => h(msg));
+            } catch (e) {
+                console.error('[WS] Failed to parse message:', e);
+            }
+        };
+
+        this.ws.onerror = (e) => {
+            console.error('[WS] Error:', e);
+            this.connectionHandlers.forEach(h => h('error'));
+        };
+
+        this.ws.onclose = () => {
+            console.log('[WS] Disconnected');
+            if (this.pingInterval) clearInterval(this.pingInterval);
+            this.connectionHandlers.forEach(h => h('disconnected'));
+            if (this.shouldReconnect) {
+                console.log(`[WS] Reconnecting in ${this.reconnectDelay}ms...`);
+                this.reconnectTimer = setTimeout(() => {
+                    this.reconnectDelay = Math.min(this.reconnectDelay * 1.5, 10_000);
+                    this._connect();
+                }, this.reconnectDelay);
+            }
+        };
+    }
 
     disconnect(): void {
-        if (state.socket) {
-            state.socket.disconnect();
-            state.socket = null;
-            state.messageHandlers.clear();
-            state.reconnectAttempts = 0;
-            notifyConnectionStatus('offline');
-        }
-    },
+        this.shouldReconnect = false;
+        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+        if (this.pingInterval) clearInterval(this.pingInterval);
+        this.ws?.close();
+        this.ws = null;
+        this.currentSessionId = null;
+    }
 
-    isConnected(): boolean {
-        return state.socket?.connected ?? false;
-    },
-
-    emit(event: string, data: unknown): void {
-        if (state.socket?.connected) {
-            state.socket.emit(event, data);
+    send(message: Record<string, unknown>): void {
+        if (this.ws?.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify(message));
         } else {
-            console.warn('Cannot emit: WebSocket not connected');
+            console.warn('[WS] Cannot send — not connected');
         }
     }
-};
+
+    /** Send probe pose update to backend */
+    sendProbeUpdate(x: number, y: number, z: number,
+                    pitch: number, yaw: number, roll: number): void {
+        this.send({
+            type: 'probeUpdate',
+            data: { x, y, z, pitch, yaw, roll },
+        });
+    }
+
+    /** Send render settings update */
+    sendSettingsUpdate(settings: {
+        wl?: number;
+        ww?: number;
+        showSeg?: boolean;
+        planeSizeMm?: number;
+        resolution?: number;
+    }): void {
+        this.send({ type: 'settingsUpdate', data: settings });
+    }
+
+    /** Trigger a capture from the backend */
+    sendCapture(): void {
+        this.send({ type: 'capture', data: {} });
+    }
+
+    /** Register a handler for incoming messages */
+    onMessage(handler: MessageHandler): () => void {
+        this.messageHandlers.add(handler);
+        return () => this.messageHandlers.delete(handler);
+    }
+
+    /** Register a connection status handler */
+    onConnection(handler: ConnectionHandler): () => void {
+        this.connectionHandlers.add(handler);
+        return () => this.connectionHandlers.delete(handler);
+    }
+
+    get isConnected(): boolean {
+        return this.ws?.readyState === WebSocket.OPEN;
+    }
+}
+
+export const wsService = new WebSocketService();

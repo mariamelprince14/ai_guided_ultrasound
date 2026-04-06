@@ -1,290 +1,290 @@
-import React from 'react';
-import { Card } from '@components/ui/Card';
-import { Button } from '@components/ui/Button';
+/**
+ * ProbeControls.tsx
+ * ──────────────────
+ * Virtual probe control panel.
+ * Sends probe pose updates via WebSocket to the backend,
+ * which re-slices the CT volume and streams back the ultrasound frame.
+ *
+ * Controls:
+ *   - X/Y/Z position sliders (clamps to volume bounds)
+ *   - Pitch / Yaw / Roll rotation sliders
+ *   - Window/Level sliders (rendering)
+ *   - Segmentation overlay toggle
+ *   - Capture button
+ *   - Case switcher
+ */
+import React, { useCallback, useRef, useState } from 'react';
 import { useAppStore } from '@store/useAppStore';
-import { apiService } from '@services/api';
-import { formatPoseValue } from '@utils/formatters';
-import {
-    Hand,
-    RotateCcw,
-    Move,
-    Lock,
-    Rotate3d,
-    Gauge,
-    Activity
-} from 'lucide-react';
-import type { ProbePose } from '@/types';
+import { wsService } from '@services/websocket';
+import { Camera, RefreshCw, Sliders, Eye, EyeOff } from 'lucide-react';
 import styles from './ProbeControls.module.css';
 
+interface SliderRowProps {
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+    unit?: string;
+    onChange: (v: number) => void;
+    color?: string;
+}
+
+const SliderRow: React.FC<SliderRowProps> = ({
+    label, value, min, max, step, unit = '', onChange, color
+}) => (
+    <div className={styles.sliderRow}>
+        <div className={styles.sliderHeader}>
+            <span className={styles.sliderLabel}>{label}</span>
+            <span className={styles.sliderValue} style={{ color: color || 'inherit' }}>
+                {value.toFixed(1)}{unit}
+            </span>
+        </div>
+        <input
+            type="range"
+            className={styles.slider}
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={e => onChange(parseFloat(e.target.value))}
+            style={{ '--slider-color': color || 'var(--color-accent, #4f8ef7)' } as React.CSSProperties}
+        />
+        <div className={styles.sliderRange}>
+            <span>{min}{unit}</span>
+            <span>{max}{unit}</span>
+        </div>
+    </div>
+);
+
 export const ProbeControls: React.FC = () => {
-    const { sessionId, currentPose, imagingSettings, updatePose, updateImagingSettings } = useAppStore();
+    const {
+        updatePose,
+        renderSettings,
+        updateRenderSettings,
+        volumeInfo,
+        connectionStatus,
+    } = useAppStore();
 
-    const handleUpdate = async (updates: Partial<ProbePose['position'] | ProbePose['rotation']>, type: 'pos' | 'rot') => {
-        const newPose = { ...currentPose };
-        if (type === 'pos') {
-            newPose.position = { ...newPose.position, ...updates };
-        } else {
-            newPose.rotation = { ...newPose.rotation, ...updates };
-        }
+    // Local state (update store + send WS on commit)
+    const [pos, setPos] = useState({ x: 0, y: 0, z: 0 });
+    const [rot, setRot] = useState({ pitch: 0, yaw: 0, roll: 0 });
+    const [captureLoading, setCaptureLoading] = useState(false);
+    const [lastCapture, setLastCapture] = useState<string | null>(null);
+    const sendTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-        // Local update for immediate feedback
-        updatePose(newPose);
-
-        // Backend update (authoritative)
-        if (sessionId) {
-            try {
-                await apiService.updateProbePose(sessionId, newPose);
-            } catch (error) {
-                console.error('Failed to update probe pose:', error);
-            }
-        }
+    // Derived volume bounds (for slider range)
+    const bounds = volumeInfo?.bounds ?? {
+        min: [-150, -150, -150],
+        max: [150, 150, 150],
+        center: [0, 0, 0],
     };
 
-    const resetPose = () => {
-        handleUpdate({ x: 0, y: 0, z: 0 }, 'pos');
-        handleUpdate({ pitch: 0, roll: 0, yaw: 0 }, 'rot');
+    const sendProbeUpdate = useCallback((
+        px: number, py: number, pz: number,
+        pitch: number, yaw: number, roll: number
+    ) => {
+        if (sendTimeout.current) clearTimeout(sendTimeout.current);
+        sendTimeout.current = setTimeout(() => {
+            wsService.sendProbeUpdate(px, py, pz, pitch, yaw, roll);
+            updatePose({
+                position: { x: px, y: py, z: pz },
+                rotation: { pitch, yaw, roll },
+            });
+        }, 16); // ~60fps throttle
+    }, [updatePose]);
+
+    const handlePos = (axis: 'x' | 'y' | 'z', val: number) => {
+        const next = { ...pos, [axis]: val };
+        setPos(next);
+        sendProbeUpdate(next.x, next.y, next.z, rot.pitch, rot.yaw, rot.roll);
     };
+
+    const handleRot = (axis: 'pitch' | 'yaw' | 'roll', val: number) => {
+        const next = { ...rot, [axis]: val };
+        setRot(next);
+        sendProbeUpdate(pos.x, pos.y, pos.z, next.pitch, next.yaw, next.roll);
+    };
+
+    const handleWL = (wl: number) => {
+        updateRenderSettings({ wl });
+        wsService.sendSettingsUpdate({ wl });
+    };
+
+    const handleWW = (ww: number) => {
+        updateRenderSettings({ ww });
+        wsService.sendSettingsUpdate({ ww });
+    };
+
+    const toggleSeg = () => {
+        const showSeg = !renderSettings.showSeg;
+        updateRenderSettings({ showSeg });
+        wsService.sendSettingsUpdate({ showSeg });
+    };
+
+    const handleCapture = () => {
+        setCaptureLoading(true);
+        wsService.sendCapture();
+        setTimeout(() => {
+            setCaptureLoading(false);
+            setLastCapture(new Date().toLocaleTimeString());
+        }, 800);
+    };
+
+    const handleReset = () => {
+        const center = volumeInfo?.bounds?.center ?? [0, 0, 0];
+        const next = { x: center[0], y: center[1], z: center[2] };
+        const nextRot = { pitch: 0, yaw: 0, roll: 0 };
+        setPos(next);
+        setRot(nextRot);
+        sendProbeUpdate(next.x, next.y, next.z, 0, 0, 0);
+    };
+
+    const isConnected = connectionStatus === 'connected';
 
     return (
-        <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Hand size={18} color="var(--color-primary-500)" /> Probe Manipulation</span>}>
-            <div className={styles.controls}>
-                {/* Translation Section */}
-                <div className={styles.section}>
-                    <h4 className={styles.sectionTitle}>
-                        <Move size={12} style={{ marginRight: '6px' }} />
-                        Translation
-                    </h4>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>X</span>
-                            <span>{formatPoseValue(currentPose.position.x)}</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="-2"
-                            max="2"
-                            step="0.1"
-                            value={currentPose.position.x}
-                            onChange={(e) => handleUpdate({ x: parseFloat(e.target.value) }, 'pos')}
-                            className={styles.slider}
-                        />
-                    </div>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>Y</span>
-                            <span>{formatPoseValue(currentPose.position.y)}</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="-2"
-                            max="2"
-                            step="0.1"
-                            value={currentPose.position.y}
-                            onChange={(e) => handleUpdate({ y: parseFloat(e.target.value) }, 'pos')}
-                            className={styles.slider}
-                        />
-                    </div>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>Z</span>
-                            <span>{formatPoseValue(currentPose.position.z)}</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="-1"
-                            max="1"
-                            step="0.1"
-                            value={currentPose.position.z}
-                            onChange={(e) => handleUpdate({ z: parseFloat(e.target.value) }, 'pos')}
-                            className={styles.slider}
-                        />
-                    </div>
+        <div className={styles.container}>
+            {/* Header */}
+            <div className={styles.header}>
+                <div className={styles.headerLeft}>
+                    <Sliders size={14} />
+                    <span>Probe Controls</span>
                 </div>
-
-                {/* Rotation Section */}
-                <div className={styles.section}>
-                    <h4 className={styles.sectionTitle}>
-                        <Rotate3d size={12} style={{ marginRight: '6px' }} />
-                        Rotation
-                    </h4>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>Pitch</span>
-                            <span>{formatPoseValue(currentPose.rotation.pitch, 0)}°</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="-45"
-                            max="45"
-                            step="1"
-                            value={currentPose.rotation.pitch}
-                            onChange={(e) => handleUpdate({ pitch: parseFloat(e.target.value) }, 'rot')}
-                            className={styles.slider}
-                        />
-                    </div>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>Roll</span>
-                            <span>{formatPoseValue(currentPose.rotation.roll, 0)}°</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="-45"
-                            max="45"
-                            step="1"
-                            value={currentPose.rotation.roll}
-                            onChange={(e) => handleUpdate({ roll: parseFloat(e.target.value) }, 'rot')}
-                            className={styles.slider}
-                        />
-                    </div>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>Yaw</span>
-                            <span>{formatPoseValue(currentPose.rotation.yaw, 0)}°</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="-180"
-                            max="180"
-                            step="1"
-                            value={currentPose.rotation.yaw}
-                            onChange={(e) => handleUpdate({ yaw: parseFloat(e.target.value) }, 'rot')}
-                            className={styles.slider}
-                        />
-                    </div>
-                </div>
-
-                {/* Simulation Parameters */}
-                <div className={styles.section}>
-                    <h4 className={styles.sectionTitle}>
-                        <Gauge size={12} style={{ marginRight: '6px' }} />
-                        Imaging
-                    </h4>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>Gain</span>
-                            <span>{imagingSettings.gain}%</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            value={imagingSettings.gain}
-                            onChange={(e) => updateImagingSettings({ gain: parseInt(e.target.value) })}
-                            className={styles.slider}
-                        />
-                    </div>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>Depth</span>
-                            <span>{imagingSettings.depth}cm</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="5"
-                            max="30"
-                            step="1"
-                            value={imagingSettings.depth}
-                            onChange={(e) => updateImagingSettings({ depth: parseInt(e.target.value) })}
-                            className={styles.slider}
-                        />
-                    </div>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>Power</span>
-                            <span>{imagingSettings.power}%</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            value={imagingSettings.power}
-                            onChange={(e) => updateImagingSettings({ power: parseInt(e.target.value) })}
-                            className={styles.slider}
-                        />
-                    </div>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>D-Range</span>
-                            <span>{imagingSettings.dynamicRange}dB</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="30"
-                            max="90"
-                            step="1"
-                            value={imagingSettings.dynamicRange}
-                            onChange={(e) => updateImagingSettings({ dynamicRange: parseInt(e.target.value) })}
-                            className={styles.slider}
-                        />
-                    </div>
-                </div>
-
-                {/* Biomechanical Props */}
-                <div className={styles.section}>
-                    <h4 className={styles.sectionTitle}>
-                        <Activity size={12} style={{ marginRight: '6px' }} />
-                        Props
-                    </h4>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>Freq</span>
-                            <span>{imagingSettings.frequency}</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="2"
-                            max="18"
-                            step="0.5"
-                            value={imagingSettings.frequency}
-                            onChange={(e) => updateImagingSettings({ frequency: parseFloat(e.target.value) })}
-                            className={styles.slider}
-                        />
-                    </div>
-                    <div className={styles.sliderGroup}>
-                        <div className={styles.sliderLabel}>
-                            <span>Press</span>
-                            <span>{imagingSettings.contactPressure.toFixed(1)}</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max="10"
-                            step="0.1"
-                            value={imagingSettings.contactPressure}
-                            onChange={(e) => updateImagingSettings({ contactPressure: parseFloat(e.target.value) })}
-                            className={styles.slider}
-                        />
-                    </div>
-                </div>
-
-                <div className={styles.actions}>
-                    <Button variant="secondary" size="small" onClick={resetPose}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <RotateCcw size={12} /> Reset
-                        </span>
-                    </Button>
-                    <div className={styles.lockOption}>
-                        <label>
-                            <input type="checkbox" />
-                            <Lock size={10} /> Lock Axis
-                        </label>
-                    </div>
-                </div>
-
-                <div className={styles.poseReadout}>
-                    <div className={styles.readoutItem}>
-                        <span className={styles.readoutLabel}>P:</span>
-                        <span>[{formatPoseValue(currentPose.position.x, 1)}, {formatPoseValue(currentPose.position.y, 1)}, {formatPoseValue(currentPose.position.z, 1)}]</span>
-                    </div>
-                    <div className={styles.readoutItem}>
-                        <span className={styles.readoutLabel}>R:</span>
-                        <span>[{formatPoseValue(currentPose.rotation.pitch, 0)}°, {formatPoseValue(currentPose.rotation.roll, 0)}°, {formatPoseValue(currentPose.rotation.yaw, 0)}°]</span>
-                    </div>
+                <div className={`${styles.connBadge} ${isConnected ? styles.connOnline : styles.connOffline}`}>
+                    <span className={styles.connDot} />
+                    {isConnected ? 'Live' : connectionStatus}
                 </div>
             </div>
-        </Card>
+
+            {/* Position Section */}
+            <div className={styles.section}>
+                <div className={styles.sectionTitle}>Position (mm)</div>
+                <SliderRow
+                    label="X (Left/Right)"
+                    value={pos.x}
+                    min={bounds.min[0]}
+                    max={bounds.max[0]}
+                    step={1}
+                    unit="mm"
+                    color="#f97316"
+                    onChange={v => handlePos('x', v)}
+                />
+                <SliderRow
+                    label="Y (Anterior/Posterior)"
+                    value={pos.y}
+                    min={bounds.min[1]}
+                    max={bounds.max[1]}
+                    step={1}
+                    unit="mm"
+                    color="#4ade80"
+                    onChange={v => handlePos('y', v)}
+                />
+                <SliderRow
+                    label="Z (Superior/Inferior)"
+                    value={pos.z}
+                    min={bounds.min[2]}
+                    max={bounds.max[2]}
+                    step={1}
+                    unit="mm"
+                    color="#60a5fa"
+                    onChange={v => handlePos('z', v)}
+                />
+            </div>
+
+            {/* Rotation Section */}
+            <div className={styles.section}>
+                <div className={styles.sectionTitle}>Orientation (°)</div>
+                <SliderRow
+                    label="Pitch (Tilt)"
+                    value={rot.pitch}
+                    min={-90}
+                    max={90}
+                    step={1}
+                    unit="°"
+                    color="#f97316"
+                    onChange={v => handleRot('pitch', v)}
+                />
+                <SliderRow
+                    label="Yaw (Rotate)"
+                    value={rot.yaw}
+                    min={-90}
+                    max={90}
+                    step={1}
+                    unit="°"
+                    color="#4ade80"
+                    onChange={v => handleRot('yaw', v)}
+                />
+                <SliderRow
+                    label="Roll (In-plane)"
+                    value={rot.roll}
+                    min={-90}
+                    max={90}
+                    step={1}
+                    unit="°"
+                    color="#60a5fa"
+                    onChange={v => handleRot('roll', v)}
+                />
+            </div>
+
+            {/* Rendering Section */}
+            <div className={styles.section}>
+                <div className={styles.sectionTitle}>Window / Level</div>
+                <SliderRow
+                    label="Window Level (HU)"
+                    value={renderSettings.wl}
+                    min={-1000}
+                    max={2000}
+                    step={10}
+                    unit=" HU"
+                    onChange={handleWL}
+                />
+                <SliderRow
+                    label="Window Width (HU)"
+                    value={renderSettings.ww}
+                    min={50}
+                    max={3000}
+                    step={50}
+                    unit=" HU"
+                    onChange={handleWW}
+                />
+            </div>
+
+            {/* Segmentation Toggle */}
+            {volumeInfo?.hasSegmentation && (
+                <button
+                    className={`${styles.segToggle} ${renderSettings.showSeg ? styles.segOn : ''}`}
+                    onClick={toggleSeg}
+                >
+                    {renderSettings.showSeg ? <Eye size={14} /> : <EyeOff size={14} />}
+                    {renderSettings.showSeg ? 'Hide Segmentation' : 'Show Segmentation'}
+                </button>
+            )}
+
+            {/* Action Buttons */}
+            <div className={styles.actions}>
+                <button
+                    className={styles.resetBtn}
+                    onClick={handleReset}
+                    title="Reset probe to center of volume"
+                >
+                    <RefreshCw size={14} />
+                    Reset
+                </button>
+                <button
+                    className={`${styles.captureBtn} ${captureLoading ? styles.capturing : ''}`}
+                    onClick={handleCapture}
+                    disabled={!isConnected || captureLoading}
+                >
+                    <Camera size={14} />
+                    {captureLoading ? 'Saving...' : 'Capture'}
+                </button>
+            </div>
+
+            {lastCapture && (
+                <div className={styles.captureSuccess}>
+                    ✓ Saved at {lastCapture}
+                </div>
+            )}
+        </div>
     );
 };

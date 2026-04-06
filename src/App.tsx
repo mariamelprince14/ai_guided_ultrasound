@@ -11,7 +11,11 @@ import { SystemStatus } from '@pages/SystemStatus';
 import { Help } from '@pages/Help';
 import '@styles/global.css';
 
+console.log('App.tsx rendering...')
+
 function App() {
+  console.log('App component rendered')
+  
   return (
     <BrowserRouter>
       <AppLayout>

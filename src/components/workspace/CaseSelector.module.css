@@ -1,0 +1,87 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted, #888);
+}
+
+.selectWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.select {
+    width: 100%;
+    padding: 8px 36px 8px 12px;
+    background: var(--color-surface, #1a1a2e);
+    border: 1px solid var(--color-border, #2a2a4a);
+    border-radius: 8px;
+    color: var(--color-text, #e0e0e0);
+    font-size: 13px;
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    outline: none;
+}
+
+.select:focus {
+    border-color: var(--color-accent, #4f8ef7);
+    box-shadow: 0 0 0 2px rgba(79,142,247,0.15);
+}
+
+.select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.selectArrow {
+    position: absolute;
+    right: 12px;
+    pointer-events: none;
+    color: var(--color-text-muted, #888);
+    font-size: 12px;
+}
+
+.spinner {
+    position: absolute;
+    right: 30px;
+    width: 14px;
+    height: 14px;
+    border: 2px solid transparent;
+    border-top-color: var(--color-accent, #4f8ef7);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.meta {
+    font-size: 11px;
+    color: var(--color-text-muted, #888);
+}
+
+.error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 80, 80, 0.1);
+    border: 1px solid rgba(255, 80, 80, 0.3);
+    border-radius: 8px;
+    color: #ff8080;
+    font-size: 12px;
+}
+
+.errorIcon {
+    font-size: 14px;
+}

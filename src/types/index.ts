@@ -1,6 +1,30 @@
 // Training Modes
 export type TrainingMode = 'full' | 'assessment' | 'identification';
 
+// Case info from backend
+export interface CaseInfo {
+    id: string;
+    name: string;
+    folder: string;
+    has_segmentation: boolean;
+    volume_file: string;
+}
+
+// Volume metadata from backend
+export interface VolumeInfo {
+    shape: [number, number, number];
+    voxelSpacing: [number, number, number];
+    huMin: number;
+    huMax: number;
+    hasSegmentation: boolean;
+    segLabels: Record<string, string>;
+    bounds: {
+        min: [number, number, number];
+        max: [number, number, number];
+        center: [number, number, number];
+    };
+}
+
 // Session Configuration
 export interface CTVolume {
     id: string;
@@ -17,7 +41,7 @@ export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
 export interface SessionConfig {
     mode: TrainingMode;
-    ctVolume: CTVolume;
+    caseId: string;
     probeType: ProbeType;
     targetOrgans: string[];
     difficulty: Difficulty;
@@ -40,12 +64,23 @@ export interface ProbePose {
 
 // Imaging Settings (Probe Parameters)
 export interface ImagingSettings {
-    gain: number; // 0-100%
-    depth: number; // 5-25cm
-    frequency: number; // 2-15MHz
+    gain: number;         // 0-100%
+    depth: number;        // 5-25cm
+    frequency: number;    // 2-15MHz
     contactPressure: number; // 0-10N
-    power: number; // 0-100%
+    power: number;        // 0-100%
     dynamicRange: number; // 30-90dB
+    windowLevel: number;  // HU center
+    windowWidth: number;  // HU width
+}
+
+// Backend rendering settings
+export interface RenderSettings {
+    wl: number;          // window level (HU)
+    ww: number;          // window width (HU)
+    showSeg: boolean;    // show segmentation overlay
+    planeSizeMm: number; // probe plane size in mm
+    resolution: number;  // output resolution px
 }
 
 // AI Feedback
@@ -72,7 +107,7 @@ export interface AIFeedback {
 export interface UltrasoundFrameMessage {
     type: 'ultrasoundFrame';
     data: {
-        image: string; // base64 encoded
+        image: string; // base64 encoded PNG
         timestamp: number;
     };
 }
@@ -96,14 +131,25 @@ export interface SessionEventMessage {
     };
 }
 
+export interface CaptureResultMessage {
+    type: 'captureResult';
+    data: {
+        success: boolean;
+        frame_index: number;
+        frame_path: string;
+        pose_path: string;
+    };
+}
+
 export type WSMessage =
     | UltrasoundFrameMessage
     | AIFeedbackMessage
     | PoseUpdateMessage
-    | SessionEventMessage;
+    | SessionEventMessage
+    | CaptureResultMessage;
 
 // Session State
-export type SessionStatus = 'not-started' | 'running' | 'paused' | 'ended';
+export type SessionStatus = 'not-started' | 'loading' | 'running' | 'paused' | 'ended';
 
 export type ConnectionStatus = 'connected' | 'reconnecting' | 'offline';
 
@@ -114,6 +160,7 @@ export interface SessionState {
     config: SessionConfig | null;
     currentPose: ProbePose;
     imagingSettings: ImagingSettings;
+    renderSettings: RenderSettings;
     currentFrame: string | null; // base64 image
     currentFeedback: AIFeedback | null;
     snapshots: Snapshot[];
@@ -162,7 +209,14 @@ export interface IdentificationTask {
 export interface CreateSessionResponse {
     sessionId: string;
     wsUrl: string;
-    config: SessionConfig;
+    caseId: string;
+    volumeInfo: VolumeInfo;
+    config: {
+        mode: string;
+        probeType: string;
+        targetOrgans: string[];
+        difficulty: string;
+    };
 }
 
 export interface ApiError {

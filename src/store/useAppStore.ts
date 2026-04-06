@@ -9,9 +9,22 @@ import type {
     AIFeedback,
     Snapshot,
     ImagingSettings,
+    RenderSettings,
+    CaseInfo,
+    VolumeInfo,
 } from '@/types';
 
 interface AppState extends SessionState {
+    // Case discovery
+    cases: CaseInfo[];
+    setCases: (cases: CaseInfo[]) => void;
+    selectedCaseId: string | null;
+    setSelectedCaseId: (id: string | null) => void;
+
+    // Volume info (from session create response)
+    volumeInfo: VolumeInfo | null;
+    setVolumeInfo: (info: VolumeInfo | null) => void;
+
     // Selection state
     selectedMode: TrainingMode | null;
     setSelectedMode: (mode: TrainingMode | null) => void;
@@ -28,6 +41,7 @@ interface AppState extends SessionState {
     // Real-time data
     updatePose: (pose: ProbePose) => void;
     updateImagingSettings: (settings: Partial<ImagingSettings>) => void;
+    updateRenderSettings: (settings: Partial<RenderSettings>) => void;
     updateFrame: (frame: string) => void;
     updateFeedback: (feedback: AIFeedback) => void;
 
@@ -65,9 +79,29 @@ const initialImagingSettings: ImagingSettings = {
     contactPressure: 0,
     power: 100,
     dynamicRange: 70,
+    windowLevel: 60,
+    windowWidth: 360,
+};
+
+const initialRenderSettings: RenderSettings = {
+    wl: 60,
+    ww: 360,
+    showSeg: false,
+    planeSizeMm: 150,
+    resolution: 512,
 };
 
 export const useAppStore = create<AppState>((set) => ({
+    // Case discovery
+    cases: [],
+    setCases: (cases) => set({ cases }),
+    selectedCaseId: null,
+    setSelectedCaseId: (id) => set({ selectedCaseId: id }),
+
+    // Volume info
+    volumeInfo: null,
+    setVolumeInfo: (info) => set({ volumeInfo: info }),
+
     // Initial state
     selectedMode: null,
     sessionId: null,
@@ -76,6 +110,7 @@ export const useAppStore = create<AppState>((set) => ({
     config: null,
     currentPose: initialPose,
     imagingSettings: initialImagingSettings,
+    renderSettings: initialRenderSettings,
     currentFrame: null,
     currentFeedback: null,
     snapshots: [],
@@ -105,6 +140,11 @@ export const useAppStore = create<AppState>((set) => ({
     updateImagingSettings: (updates) =>
         set((state) => ({
             imagingSettings: { ...state.imagingSettings, ...updates },
+        })),
+
+    updateRenderSettings: (updates) =>
+        set((state) => ({
+            renderSettings: { ...state.renderSettings, ...updates },
         })),
 
     updateFrame: (frame) => set({ currentFrame: frame }),
@@ -156,9 +196,11 @@ export const useAppStore = create<AppState>((set) => ({
             connectionStatus: 'offline',
             currentPose: initialPose,
             imagingSettings: initialImagingSettings,
+            renderSettings: initialRenderSettings,
             currentFrame: null,
             currentFeedback: null,
             snapshots: [],
             metrics: initialMetrics,
+            volumeInfo: null,
         }),
 }));
