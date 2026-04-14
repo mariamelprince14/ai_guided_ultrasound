@@ -22,6 +22,7 @@ WebSocket protocol:
                 OR { "type": "sessionEvent", "data": { "event": "...", "timestamp": 0 } }
                 OR { "type": "captureResult", "data": { "frame_index": 0, ... } }
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,8 +39,12 @@ from pydantic import BaseModel
 import case_manager
 import capture as capture_mod
 from probe_controller import ProbePose, pose_to_matrix, default_axial_matrix
-from reslicer import reslice, reslice_segmentation, compute_volume_bounds_world, build_affine_inverse
+from reslicer import (
+    reslice, reslice_segmentation, compute_volume_bounds_world,
+    build_affine_inverse, get_downsampled_volume
+)
 from renderer import render_slice, render_to_base64
+from fastapi import Response
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -89,6 +94,51 @@ async def startup():
 async def get_cases():
     """Return all discovered CT cases."""
     return {"cases": case_manager.list_cases()}
+
+
+@app.get("/api/cases/status")
+async def get_cases_status():
+    """Return a detailed validation report of all discovered cases."""
+    return case_manager.get_status()
+
+
+@app.get("/api/cases/{case_id}/volume")
+async def get_case_volume(case_id: str):
+    """
+    Returns downsampled voxel data for 3D visualization.
+    Format: raw Uint8 binary data.
+    Metadata is provided in X-Volume headers.
+    """
+    volume = case_manager.load_case(case_id)
+    if volume is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    # 1. Downsample
+    # Target 128 max dim (~2MB payload in Uint8)
+    ds_array, factors = get_downsampled_volume(volume.array, max_dim=128)
+
+    # 2. Normalize HU [-1024, 3072] to Uint8 [0, 255]
+    # This range covers almost all medical CT anatomy.
+    hu_min, hu_max = -1024.0, 3072.0
+    norm_pixels = np.clip(ds_array, hu_min, hu_max)
+    norm_pixels = (norm_pixels - hu_min) / (hu_max - hu_min) * 255.0
+    u8_pixels = norm_pixels.astype(np.uint8)
+
+    # 3. Prepare response with metadata in headers
+    headers = {
+        "X-Volume-Dims": ",".join(map(str, u8_pixels.shape)),  # (Z, Y, X)
+        "X-Volume-Spacing": ",".join(map(str, volume.voxel_spacing)),
+        "X-Volume-Factors": ",".join(map(str, factors)),
+        "X-Volume-HU-Range": f"{hu_min},{hu_max}",
+        "X-Volume-Axis-Order": "Z-Y-X",
+        "Access-Control-Expose-Headers": "X-Volume-Dims, X-Volume-Spacing, X-Volume-Factors, X-Volume-HU-Range, X-Volume-Axis-Order"
+    }
+
+    return Response(
+        content=u8_pixels.tobytes(),
+        media_type="application/octet-stream",
+        headers=headers
+    )
 
 
 class CreateSessionRequest(BaseModel):

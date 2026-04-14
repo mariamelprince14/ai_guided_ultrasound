@@ -11,19 +11,51 @@ interface LogEntry {
     message: string;
 }
 
+interface CaseStatus {
+    id: string;
+    name: string;
+    is_valid: boolean;
+    has_segmentation: boolean;
+    volume_file: string;
+    error?: string;
+}
+
+interface DiscoveryStatus {
+    total: number;
+    valid: number;
+    segmentations: number;
+    failed: number;
+    cases: CaseStatus[];
+}
+
 export const SystemStatus: React.FC = () => {
     const { sessionId, connectionStatus } = useAppStore();
-    const [logs, setLogs] = useState<LogEntry[]>([]);
+    const [discovery, setDiscovery] = useState<DiscoveryStatus | null>(null);
+    const [logs, setLogs] = useState<LogEntry[]>(() => [
+        { timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'System initialized' },
+        { timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'Rest client ready' },
+        { timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'WebSocket manager waiting for connection...' },
+    ]);
     const logEndRef = useRef<HTMLDivElement>(null);
 
-    // Simulate incoming logs for demo purposes
     useEffect(() => {
-        const initialLogs: LogEntry[] = [
-            { timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'System initialized' },
-            { timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'Rest client ready' },
-            { timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'WebSocket manager waiting for connection...' },
-        ];
-        setLogs(initialLogs);
+        const fetchStatus = async () => {
+            try {
+                const res = await fetch('http://localhost:8000/api/cases/status');
+                const data = await res.json();
+                setDiscovery(data);
+                setLogs(prev => [
+                    ...prev,
+                    { timestamp: new Date().toLocaleTimeString(), level: 'info', message: `Discovery complete: found ${data.total} cases` }
+                ]);
+            } catch (err) {
+                setLogs(prev => [
+                    ...prev,
+                    { timestamp: new Date().toLocaleTimeString(), level: 'error', message: 'Failed to fetch discovery status' }
+                ]);
+            }
+        };
+        fetchStatus();
     }, []);
 
     useEffect(() => {
@@ -48,35 +80,83 @@ export const SystemStatus: React.FC = () => {
             </div>
 
             <div className={styles.statsRow}>
-                <Card title="Backend Health">
+                <Card title="Dataset Validation">
                     <div className={styles.statusGrid}>
                         <div className={styles.statusItem}>
-                            <span className={styles.statusLabel}>WebSocket State</span>
-                            <Badge variant={getConnectionVariant(connectionStatus)}>{connectionStatus.toUpperCase()}</Badge>
+                            <span className={styles.statusLabel}>Total Discoveries</span>
+                            <span className={styles.statusValue}>{discovery?.total ?? '...'}</span>
                         </div>
                         <div className={styles.statusItem}>
-                            <span className={styles.statusLabel}>Latency Estimate</span>
-                            <span className={styles.statusValue}>24ms</span>
+                            <span className={styles.statusLabel}>Valid Volumes</span>
+                            <Badge variant="success">{discovery?.valid ?? 0}</Badge>
                         </div>
                         <div className={styles.statusItem}>
-                            <span className={styles.statusLabel}>Last Heartbeat</span>
-                            <span className={styles.statusValue}>1s ago</span>
+                            <span className={styles.statusLabel}>Segmentations</span>
+                            <span className={styles.statusValue}>{discovery?.segmentations ?? 0}</span>
+                        </div>
+                        <div className={styles.statusItem}>
+                            <span className={styles.statusLabel}>Load Failures</span>
+                            <Badge variant={discovery?.failed ? 'error' : 'success'}>{discovery?.failed ?? 0}</Badge>
                         </div>
                     </div>
                 </Card>
 
-                <Card title="Active Session Info">
+                <Card title="Connection Health">
                     <div className={styles.statusGrid}>
                         <div className={styles.statusItem}>
-                            <span className={styles.statusLabel}>Session ID</span>
-                            <span className={styles.statusValueMono}>{sessionId || 'None'}</span>
+                            <span className={styles.statusLabel}>WebSocket</span>
+                            <Badge variant={getConnectionVariant(connectionStatus)}>{connectionStatus.toUpperCase()}</Badge>
                         </div>
                         <div className={styles.statusItem}>
-                            <span className={styles.statusLabel}>Dropped Frames</span>
-                            <span className={styles.statusValue}>0 (0%)</span>
+                            <span className={styles.statusLabel}>Session ID</span>
+                            <span className={styles.statusValueMonoShort}>{sessionId ? sessionId.slice(0, 8) : 'None'}</span>
                         </div>
                     </div>
                 </Card>
+            </div>
+
+            <div className={styles.caseListSection}>
+                <h3>Case Inventory & Integrity</h3>
+                <div className={styles.caseTableWrapper}>
+                    <table className={styles.caseTable}>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Segmentation</th>
+                                <th>Volume File</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {discovery?.cases?.map(c => (
+                                <tr key={c.id}>
+                                    <td className={styles.caseIdCell}>{c.id}</td>
+                                    <td>{c.name}</td>
+                                    <td>
+                                        {c.has_segmentation ? 
+                                            <span style={{ color: '#4ade80' }} className={styles.checkIcon}>✓</span> : 
+                                            <span style={{ color: '#94a3b8', opacity: 0.3 }}>—</span>
+                                        }
+                                    </td>
+                                    <td className={styles.detailsCell}>{c.volume_file}</td>
+                                    <td>
+                                        <span className={c.is_valid ? styles.statusValueMonoShort : styles.statusValueMonoError}>
+                                            {c.is_valid ? 'READY' : (c.error || 'FAILED')}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                            {(!discovery || !discovery.cases || discovery.cases.length === 0) && (
+                                <tr>
+                                    <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                                        No cases discovered or backend offline
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div className={styles.logSection}>

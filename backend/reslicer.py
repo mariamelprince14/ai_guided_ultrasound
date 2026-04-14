@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 
 import numpy as np
+import scipy.ndimage as ndimage
 
 logger = logging.getLogger(__name__)
 
@@ -181,3 +182,20 @@ def compute_volume_bounds_world(shape: tuple, affine: np.ndarray) -> dict:
         "max": [float(xs.max()), float(ys.max()), float(zs.max())],
         "center": [float(xs.mean()), float(ys.mean()), float(zs.mean())],
     }
+
+
+def get_downsampled_volume(
+    array: np.ndarray, 
+    max_dim: int = 128
+) -> tuple[np.ndarray, tuple[float, float, float]]:
+    """
+    Downsample a 3D volume for frontend visualization.
+    Returns (downsampled_array, scale_factors).
+    """
+    current_shape = array.shape
+    factors = [max_dim / s if s > max_dim else 1.0 for s in current_shape]
+    
+    # Using order=1 (bilinear) for balance of speed and smoothness
+    downsampled = ndimage.zoom(array, factors, order=1)
+    
+    return downsampled, tuple(factors)

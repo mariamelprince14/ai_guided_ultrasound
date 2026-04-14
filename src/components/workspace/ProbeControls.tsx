@@ -12,6 +12,9 @@
  *   - Segmentation overlay toggle
  *   - Capture button
  *   - Case switcher
+ *
+ * NOTE: probePos / probeRot are now stored in Zustand so the 3D VolumeViewer
+ * can also read and update them, keeping sliders and 3D view in sync.
  */
 import React, { useCallback, useRef, useState } from 'react';
 import { useAppStore } from '@store/useAppStore';
@@ -64,11 +67,13 @@ export const ProbeControls: React.FC = () => {
         updateRenderSettings,
         volumeInfo,
         connectionStatus,
+        probePos,
+        probeRot,
+        setProbePos,
+        setProbeRot,
     } = useAppStore();
 
     // Local state (update store + send WS on commit)
-    const [pos, setPos] = useState({ x: 0, y: 0, z: 0 });
-    const [rot, setRot] = useState({ pitch: 0, yaw: 0, roll: 0 });
     const [captureLoading, setCaptureLoading] = useState(false);
     const [lastCapture, setLastCapture] = useState<string | null>(null);
     const sendTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,15 +100,15 @@ export const ProbeControls: React.FC = () => {
     }, [updatePose]);
 
     const handlePos = (axis: 'x' | 'y' | 'z', val: number) => {
-        const next = { ...pos, [axis]: val };
-        setPos(next);
-        sendProbeUpdate(next.x, next.y, next.z, rot.pitch, rot.yaw, rot.roll);
+        const next = { ...probePos, [axis]: val };
+        setProbePos(next);
+        sendProbeUpdate(next.x, next.y, next.z, probeRot.pitch, probeRot.yaw, probeRot.roll);
     };
 
     const handleRot = (axis: 'pitch' | 'yaw' | 'roll', val: number) => {
-        const next = { ...rot, [axis]: val };
-        setRot(next);
-        sendProbeUpdate(pos.x, pos.y, pos.z, next.pitch, next.yaw, next.roll);
+        const next = { ...probeRot, [axis]: val };
+        setProbeRot(next);
+        sendProbeUpdate(probePos.x, probePos.y, probePos.z, next.pitch, next.yaw, next.roll);
     };
 
     const handleWL = (wl: number) => {
@@ -135,8 +140,8 @@ export const ProbeControls: React.FC = () => {
         const center = volumeInfo?.bounds?.center ?? [0, 0, 0];
         const next = { x: center[0], y: center[1], z: center[2] };
         const nextRot = { pitch: 0, yaw: 0, roll: 0 };
-        setPos(next);
-        setRot(nextRot);
+        setProbePos(next);
+        setProbeRot(nextRot);
         sendProbeUpdate(next.x, next.y, next.z, 0, 0, 0);
     };
 
@@ -161,7 +166,7 @@ export const ProbeControls: React.FC = () => {
                 <div className={styles.sectionTitle}>Position (mm)</div>
                 <SliderRow
                     label="X (Left/Right)"
-                    value={pos.x}
+                    value={probePos.x}
                     min={bounds.min[0]}
                     max={bounds.max[0]}
                     step={1}
@@ -171,7 +176,7 @@ export const ProbeControls: React.FC = () => {
                 />
                 <SliderRow
                     label="Y (Anterior/Posterior)"
-                    value={pos.y}
+                    value={probePos.y}
                     min={bounds.min[1]}
                     max={bounds.max[1]}
                     step={1}
@@ -181,7 +186,7 @@ export const ProbeControls: React.FC = () => {
                 />
                 <SliderRow
                     label="Z (Superior/Inferior)"
-                    value={pos.z}
+                    value={probePos.z}
                     min={bounds.min[2]}
                     max={bounds.max[2]}
                     step={1}
@@ -196,7 +201,7 @@ export const ProbeControls: React.FC = () => {
                 <div className={styles.sectionTitle}>Orientation (°)</div>
                 <SliderRow
                     label="Pitch (Tilt)"
-                    value={rot.pitch}
+                    value={probeRot.pitch}
                     min={-90}
                     max={90}
                     step={1}
@@ -206,7 +211,7 @@ export const ProbeControls: React.FC = () => {
                 />
                 <SliderRow
                     label="Yaw (Rotate)"
-                    value={rot.yaw}
+                    value={probeRot.yaw}
                     min={-90}
                     max={90}
                     step={1}
@@ -216,7 +221,7 @@ export const ProbeControls: React.FC = () => {
                 />
                 <SliderRow
                     label="Roll (In-plane)"
-                    value={rot.roll}
+                    value={probeRot.roll}
                     min={-90}
                     max={90}
                     step={1}

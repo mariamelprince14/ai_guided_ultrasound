@@ -12,9 +12,9 @@ import { useAppStore } from '@store/useAppStore';
 import { apiService } from '@services/api';
 import { wsService } from '@services/websocket';
 import { WorkspaceLayout } from '@components/workspace/WorkspaceLayout';
-import { UltrasoundViewer } from '@components/workspace/UltrasoundViewer';
 import { ProbeControls } from '@components/workspace/ProbeControls';
-import { GuidancePanel } from '@components/workspace/GuidancePanel';
+import { VolumeViewer } from '@components/workspace/VolumeViewer';
+import { RightPanel } from '@components/workspace/RightPanel';
 import { CaseSelector } from '@components/workspace/CaseSelector';
 import type { WSMessage } from '@/types';
 import styles from './TrainingPage.module.css';
@@ -32,9 +32,14 @@ export const FullTrainingPage: React.FC = () => {
         setVolumeInfo,
         volumeInfo,
         resetSession,
+        fetchVolumeData,
+        setProbePos,
+        setProbeRot,
+        updatePose,
     } = useAppStore();
 
     const [loadState, setLoadState] = useState<LoadState>('idle');
+    const [isSwitching, setIsSwitching] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [captureCount, setCaptureCount] = useState(0);
 
@@ -69,34 +74,62 @@ export const FullTrainingPage: React.FC = () => {
     }, [updateFrame, setSessionStatus, setConnectionStatus]);
 
     // ── Load session ────────────────────────────────────────────────────────
-    const handleLoadCase = useCallback(async () => {
-        if (!selectedCaseId) return;
-        setLoadState('loading');
-        setLoadError(null);
-        resetSession();
+    const handleLoadCase = useCallback(async (caseIdOverride?: string) => {
+        const idToLoad = caseIdOverride || selectedCaseId;
+        if (!idToLoad) return;
+        
+        const isInitial = loadState !== 'ready';
+        if (isInitial) setLoadState('loading');
+        else setIsSwitching(true);
 
+        setLoadError(null);
+        
         try {
+            // 1. Disconnect and cleanup
+            wsService.disconnect();
+            resetSession();
+
+            // 2. Create new session
             const res = await apiService.createSession({
                 mode: 'full',
-                caseId: selectedCaseId,
+                caseId: idToLoad,
                 probeType: 'curvilinear',
                 targetOrgans: [],
                 difficulty: 'beginner',
             });
+
+            // 3. Update state
             setSessionId(res.sessionId);
             setVolumeInfo(res.volumeInfo);
-            setSessionStatus('running');
+            setSelectedCaseId(idToLoad);
+            
+            // Initialize probe at the center of the new volume
+            const initialPos = {
+                x: res.volumeInfo.bounds.center[0],
+                y: res.volumeInfo.bounds.center[1],
+                z: res.volumeInfo.bounds.center[2],
+            };
+            const initialRot = { pitch: 20, yaw: 0, roll: 0 }; 
+            
+            setProbePos(initialPos);
+            setProbeRot(initialRot);
+            updatePose({ position: initialPos, rotation: initialRot });
 
-            // Connect WebSocket
-            wsService.disconnect();
+            setSessionStatus('running');
+            fetchVolumeData(idToLoad);
+
+            // 4. Connect WebSocket
             wsService.connect(res.sessionId);
-            setLoadState('ready');
+            
+            if (isInitial) setLoadState('ready');
         } catch (err: unknown) {
             const msg = (err as { message?: string })?.message || 'Failed to load case';
             setLoadError(msg);
-            setLoadState('error');
+            if (isInitial) setLoadState('error');
+        } finally {
+            setIsSwitching(false);
         }
-    }, [selectedCaseId, resetSession, setSessionId, setVolumeInfo, setSessionStatus]);
+    }, [selectedCaseId, loadState, resetSession, setSessionId, setVolumeInfo, setSelectedCaseId, setSessionStatus, fetchVolumeData, setProbePos, setProbeRot, updatePose]);
 
     // ── Cleanup on unmount ──────────────────────────────────────────────────
     useEffect(() => {
@@ -135,7 +168,7 @@ export const FullTrainingPage: React.FC = () => {
 
                     <button
                         className={styles.loadButton}
-                        onClick={handleLoadCase}
+                        onClick={() => handleLoadCase()}
                         disabled={!selectedCaseId}
                     >
                         Load Case & Start Training
@@ -163,42 +196,59 @@ export const FullTrainingPage: React.FC = () => {
     // ── Render: training workspace ───────────────────────────────────────────
     const renderHeader = () => (
         <div className={styles.workspaceHeader}>
-            <div className={styles.caseTag}>
-                🩻 {selectedCaseId}
-                {volumeInfo?.hasSegmentation && (
-                    <span className={styles.segBadge}>SEG</span>
-                )}
+            <div className={styles.headerLeft}>
+                <div className={styles.caseTag}>
+                    <span className={styles.caseIcon}>🩻</span>
+                    <CaseSelector
+                        className={styles.compactSelector}
+                        onSelect={(id) => handleLoadCase(id)}
+                    />
+                    {volumeInfo?.hasSegmentation && (
+                        <span className={styles.segBadge}>SEG</span>
+                    )}
+                </div>
+                <div className={styles.volumeMeta}>
+                    {volumeInfo && (
+                        <>
+                            <span className={styles.metaVal}>{volumeInfo.shape.join(' × ')} vox</span>
+                            <span className={styles.metaDivider}>·</span>
+                            <span className={styles.metaVal}>
+                                {volumeInfo.voxelSpacing.map(v => v.toFixed(1)).join('×')} mm
+                            </span>
+                        </>
+                    )}
+                </div>
             </div>
-            <div className={styles.volumeMeta}>
-                {volumeInfo && (
-                    <>
-                        <span>{volumeInfo.shape.join(' × ')} voxels</span>
-                        <span>·</span>
-                        <span>{volumeInfo.voxelSpacing.map(v => v.toFixed(1)).join('×')} mm</span>
-                    </>
-                )}
-            </div>
-            <div className={styles.captureCount}>
-                📷 {captureCount} captures
+            <div className={styles.headerRight}>
+                <div className={styles.captureCount}>
+                    📷 <strong>{captureCount}</strong> captures
+                </div>
+                <div className={styles.caseLabel}>
+                    Active Case: <span>{selectedCaseId}</span>
+                </div>
             </div>
         </div>
     );
 
     return (
-        <div className={styles.trainingPage}>
+        <div className={`${styles.trainingPage} ${isSwitching ? styles.isSwitching : ''}`}>
+            {isSwitching && (
+                <div className={styles.loadingOverlay}>
+                    <div className={styles.loadingCard}>
+                        <div className={styles.loadingSpinner} />
+                        <p>Switching Anatomy...</p>
+                    </div>
+                </div>
+            )}
             <WorkspaceLayout
                 header={renderHeader()}
-                leftPanel={
-                    <ProbeControls />
-                }
+                leftPanel={<ProbeControls />}
                 centerPanel={
                     <div className={styles.viewerContainer}>
-                        <UltrasoundViewer />
+                        <VolumeViewer />
                     </div>
                 }
-                rightPanel={
-                    <GuidancePanel />
-                }
+                rightPanel={<RightPanel />}
             />
         </div>
     );

@@ -4,6 +4,7 @@ import type {
     ProbePose,
     ApiError,
     CaseInfo,
+    VolumeVoxelData,
 } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -119,6 +120,33 @@ class ApiService {
     /** List all saved captures for a session */
     async listCaptures(sessionId: string): Promise<{ captures: unknown[] }> {
         return this.request(`/api/captures/${sessionId}`);
+    }
+
+    /** 
+     * Fetch downsampled 3D voxel data for a case.
+     * Returns a Uint8Array of voxel values + metadata from headers.
+     */
+    async getVolumeData(caseId: string): Promise<VolumeVoxelData> {
+        const url = `${API_BASE_URL}/api/cases/${caseId}/volume`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch volume data: ${response.statusText}`);
+        }
+
+        const buffer = await response.arrayBuffer();
+        const data = new Uint8Array(buffer);
+
+        // Parse metadata from custom headers
+        const metadata: VolumeVoxelData['metadata'] = {
+            dims: (response.headers.get('X-Volume-Dims')?.split(',').map(Number) as [number, number, number]) || [1, 1, 1],
+            spacing: (response.headers.get('X-Volume-Spacing')?.split(',').map(Number) as [number, number, number]) || [1, 1, 1],
+            factors: (response.headers.get('X-Volume-Factors')?.split(',').map(Number) as [number, number, number]) || [1, 1, 1],
+            huRange: (response.headers.get('X-Volume-HU-Range')?.split(',').map(Number) as [number, number]) || [-1024, 3072],
+            axisOrder: response.headers.get('X-Volume-Axis-Order') || 'Z-Y-X',
+        };
+
+        return { data, metadata };
     }
 }
 

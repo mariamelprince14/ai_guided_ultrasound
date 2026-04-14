@@ -32,14 +32,18 @@ CACHE_SIZE = 3
 
 class CaseInfo:
     """Lightweight metadata about a single case (no volume loaded yet)."""
-    def __init__(self, case_id: str, folder: Path, volume_path: Path,
-                 seg_nrrd_path: Optional[Path] = None,
-                 seg_label_path: Optional[Path] = None):
+    def __init__(self, case_id: str, folder: Path, volume_path: Optional[Path] = None,
+                  seg_nrrd_path: Optional[Path] = None,
+                  seg_label_path: Optional[Path] = None,
+                  is_valid: bool = True,
+                  error: Optional[str] = None):
         self.case_id = case_id
         self.folder = folder
         self.volume_path = volume_path
         self.seg_nrrd_path = seg_nrrd_path
         self.seg_label_path = seg_label_path
+        self.is_valid = is_valid
+        self.error = error
 
     def to_dict(self) -> dict:
         return {
@@ -48,7 +52,9 @@ class CaseInfo:
             "folder": str(self.folder),
             "has_segmentation": self.seg_nrrd_path is not None
                                 or self.seg_label_path is not None,
-            "volume_file": self.volume_path.name,
+            "volume_file": self.volume_path.name if self.volume_path else None,
+            "is_valid": self.is_valid,
+            "error": self.error
         }
 
 
@@ -72,10 +78,17 @@ def discover_cases(dataset_root: Path = DATASET_ROOT) -> list[CaseInfo]:
         # Find volume: prefer files NOT ending in 'segmentation-label.nii.gz'
         nii_files = list(folder.glob("*.nii.gz"))
         vol_files = [f for f in nii_files if "segmentation" not in f.name.lower()]
+        
+        volume_path = None
+        is_valid = True
+        error = None
+        
         if not vol_files:
-            logger.warning(f"No volume .nii.gz found in {folder.name}, skipping")
-            continue
-        volume_path = vol_files[0]
+            logger.warning(f"No volume .nii.gz found in {folder.name}")
+            is_valid = False
+            error = "Missing CT volume (.nii.gz)"
+        else:
+            volume_path = vol_files[0]
 
         # Find segmentation .seg.nrrd
         nrrd_files = list(folder.glob("*.seg.nrrd"))
@@ -92,9 +105,11 @@ def discover_cases(dataset_root: Path = DATASET_ROOT) -> list[CaseInfo]:
             volume_path=volume_path,
             seg_nrrd_path=seg_nrrd,
             seg_label_path=seg_label,
+            is_valid=is_valid,
+            error=error
         ))
         logger.info(
-            f"Discovered case {case_id}: vol={volume_path.name}, "
+            f"Discovered case {case_id}: valid={is_valid}, "
             f"seg_nrrd={seg_nrrd is not None}, seg_label={seg_label is not None}"
         )
 
@@ -164,3 +179,18 @@ def load_case(case_id: str) -> Optional[VolumeData]:
 def get_loaded_volume(case_id: str) -> Optional[VolumeData]:
     """Return a previously loaded volume without re-loading."""
     return _loaded_volumes.get(case_id)
+
+
+def get_status() -> dict:
+    """Return a validation summary of all discovered cases."""
+    cases = list_cases()
+    valid_count = sum(1 for c in cases if c["is_valid"])
+    seg_count = sum(1 for c in cases if c["has_segmentation"])
+    
+    return {
+        "total": len(cases),
+        "valid": valid_count,
+        "segmentations": seg_count,
+        "failed": len(cases) - valid_count,
+        "cases": cases
+    }

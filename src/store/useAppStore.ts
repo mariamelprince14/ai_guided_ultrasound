@@ -12,7 +12,9 @@ import type {
     RenderSettings,
     CaseInfo,
     VolumeInfo,
+    VolumeVoxelData,
 } from '@/types';
+import { apiService } from '@/services/api';
 
 interface AppState extends SessionState {
     // Case discovery
@@ -38,6 +40,12 @@ interface AppState extends SessionState {
     setSessionStatus: (status: SessionStatus) => void;
     setConnectionStatus: (status: ConnectionStatus) => void;
 
+    // Shared probe position/rotation (used by both ProbeControls sliders AND 3D VolumeViewer)
+    probePos: { x: number; y: number; z: number };
+    probeRot: { pitch: number; yaw: number; roll: number };
+    setProbePos: (pos: { x: number; y: number; z: number }) => void;
+    setProbeRot: (rot: { pitch: number; yaw: number; roll: number }) => void;
+
     // Real-time data
     updatePose: (pose: ProbePose) => void;
     updateImagingSettings: (settings: Partial<ImagingSettings>) => void;
@@ -54,6 +62,10 @@ interface AppState extends SessionState {
     incrementCorrectAnswers: () => void;
     incrementTotalAttempts: () => void;
 
+    // Real 3D voxel data for VolumeViewer ray-marching
+    volumeVoxelData: VolumeVoxelData | null;
+    fetchVolumeData: (caseId: string) => Promise<void>;
+
     // Reset
     resetSession: () => void;
 }
@@ -62,6 +74,9 @@ const initialPose: ProbePose = {
     position: { x: 0, y: 0, z: 0 },
     rotation: { pitch: 0, roll: 0, yaw: 0 },
 };
+
+const initialProbePos = { x: 0, y: 0, z: 0 };
+const initialProbeRot = { pitch: 0, yaw: 0, roll: 0 };
 
 const initialMetrics = {
     startTime: null,
@@ -89,6 +104,7 @@ const initialRenderSettings: RenderSettings = {
     showSeg: false,
     planeSizeMm: 150,
     resolution: 512,
+    clippingEnabled: false,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -115,6 +131,13 @@ export const useAppStore = create<AppState>((set) => ({
     currentFeedback: null,
     snapshots: [],
     metrics: initialMetrics,
+    volumeVoxelData: null,
+
+    // Shared probe position/rotation (shared between ProbeControls and VolumeViewer)
+    probePos: initialProbePos,
+    probeRot: initialProbeRot,
+    setProbePos: (pos) => set({ probePos: pos }),
+    setProbeRot: (rot) => set({ probeRot: rot }),
 
     // Actions
     setSelectedMode: (mode) => set({ selectedMode: mode }),
@@ -189,12 +212,23 @@ export const useAppStore = create<AppState>((set) => ({
             },
         })),
 
+    fetchVolumeData: async (caseId: string) => {
+        try {
+            const result = await apiService.getVolumeData(caseId);
+            set({ volumeVoxelData: result });
+        } catch (error) {
+            console.error('Failed to fetch volume data:', error);
+        }
+    },
+
     resetSession: () =>
         set({
             sessionId: null,
             status: 'not-started',
             connectionStatus: 'offline',
             currentPose: initialPose,
+            probePos: initialProbePos,
+            probeRot: initialProbeRot,
             imagingSettings: initialImagingSettings,
             renderSettings: initialRenderSettings,
             currentFrame: null,
@@ -202,5 +236,6 @@ export const useAppStore = create<AppState>((set) => ({
             snapshots: [],
             metrics: initialMetrics,
             volumeInfo: null,
+            volumeVoxelData: null,
         }),
 }));

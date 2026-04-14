@@ -4,6 +4,7 @@ import { Card } from '@components/ui/Card';
 import { Button } from '@components/ui/Button';
 import { Badge } from '@components/ui/Badge';
 import { formatDuration, formatDate } from '@utils/formatters';
+import type { Snapshot } from '@/types';
 import styles from './ProgressResults.module.css';
 
 export const ProgressResults: React.FC = () => {
@@ -58,7 +59,7 @@ export const ProgressResults: React.FC = () => {
                             </div>
                         ) : (
                             <div className={styles.snapshotGrid}>
-                                {snapshots.map((snapshot: any) => (
+                                {snapshots.map((snapshot: Snapshot) => (
                                     <div key={snapshot.id} className={styles.snapshotCard}>
                                         <div className={styles.snapshotImageContainer}>
                                             <img src={`data:image/jpeg;base64,${snapshot.image}`} alt={snapshot.label} className={styles.snapshotImage} />
