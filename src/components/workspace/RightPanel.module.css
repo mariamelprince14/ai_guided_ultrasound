@@ -1,0 +1,99 @@
+/* RightPanel.module.css */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    gap: 0;
+    overflow: hidden;
+}
+
+/* ── Ultrasound viewer section ──────────────────────────── */
+.viewerSection {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: 10px;
+    /* Give it some breathing room from GuidancePanel */
+    margin-bottom: 4px;
+}
+
+/* ── Guidance panel wrapper ─────────────────────────────── */
+.guidanceWrapper {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 360px; /* enough for 3 cards */
+}
+
+.guidanceWrapper.collapsed {
+    max-height: 36px; /* just the toggle header */
+}
+
+/* ── Collapse toggle button ─────────────────────────────── */
+.collapseToggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 8px 12px;
+    background: rgba(79, 142, 247, 0.06);
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    color: #94a3b8;
+    transition: background 0.15s ease, color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.collapseToggle:hover {
+    background: rgba(79, 142, 247, 0.12);
+    color: #e2e8f0;
+}
+
+.toggleLeft {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-primary-400, #60a5fa);
+}
+
+.toggleChevron {
+    display: flex;
+    align-items: center;
+    color: inherit;
+    transition: transform 0.25s ease;
+}
+
+/* ── Panel content area ─────────────────────────────────── */
+.guidanceContent {
+    overflow-y: auto;
+    flex: 1;
+    padding: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.guidanceContent::-webkit-scrollbar {
+    width: 4px;
+}
+
+.guidanceContent::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 99px;
+}
+
+/* When collapsed, hide content */
+.guidanceWrapper.collapsed .guidanceContent {
+    display: none;
+}

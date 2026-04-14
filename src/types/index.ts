@@ -25,6 +25,17 @@ export interface VolumeInfo {
     };
 }
 
+export interface VolumeVoxelData {
+    data: Uint8Array;
+    metadata: {
+        dims: [number, number, number];
+        spacing: [number, number, number];
+        factors: [number, number, number];
+        huRange: [number, number];
+        axisOrder: string;
+    };
+}
+
 // Session Configuration
 export interface CTVolume {
     id: string;
@@ -81,6 +92,7 @@ export interface RenderSettings {
     showSeg: boolean;    // show segmentation overlay
     planeSizeMm: number; // probe plane size in mm
     resolution: number;  // output resolution px
+    clippingEnabled: boolean; // render only region around probe
 }
 
 // AI Feedback

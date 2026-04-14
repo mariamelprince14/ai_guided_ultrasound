@@ -21,19 +21,27 @@ export const CaseSelector: React.FC<CaseSelectorProps> = ({ onSelect, className 
 
     useEffect(() => {
         if (cases.length > 0) return; // already loaded
-        setLoading(true);
-        setError(null);
-        apiService.getCases()
-            .then(res => {
+        
+        const fetchCases = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const res = await apiService.getCases();
                 setCases(res.cases);
                 // Auto-select first case
                 if (res.cases.length > 0 && !selectedCaseId) {
                     setSelectedCaseId(res.cases[0].id);
                     onSelect?.(res.cases[0].id);
                 }
-            })
-            .catch(err => setError(err.message || 'Failed to load cases'))
-            .finally(() => setLoading(false));
+            } catch (err: unknown) {
+                setError(err instanceof Error ? err.message : 'Failed to load cases');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCases();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
