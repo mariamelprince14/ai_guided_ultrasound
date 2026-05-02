@@ -36,6 +36,28 @@ export interface VolumeVoxelData {
     };
 }
 
+// Torso & Volume Registration
+export interface VolumeRegistration {
+    position: [number, number, number];
+    rotation: [number, number, number]; // in degrees
+    scale: number;
+}
+
+export interface TorsoSettings {
+    opacity: number;
+    wireframe: boolean;
+    ctVisible: boolean;
+    torsoBoundingBoxVisible: boolean;
+    ctBoundingBoxVisible: boolean;
+}
+
+export interface BoundingBox3D {
+    min: [number, number, number];
+    max: [number, number, number];
+    center: [number, number, number];
+    size: [number, number, number];
+}
+
 // Session Configuration
 export interface CTVolume {
     id: string;

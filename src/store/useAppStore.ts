@@ -13,6 +13,9 @@ import type {
     CaseInfo,
     VolumeInfo,
     VolumeVoxelData,
+    VolumeRegistration,
+    TorsoSettings,
+    BoundingBox3D,
 } from '@/types';
 import { apiService } from '@/services/api';
 
@@ -66,6 +69,24 @@ interface AppState extends SessionState {
     volumeVoxelData: VolumeVoxelData | null;
     fetchVolumeData: (caseId: string) => Promise<void>;
 
+    // Registration and Torso settings
+    registration: VolumeRegistration;
+    setRegistration: (reg: VolumeRegistration) => void;
+    torsoSettings: TorsoSettings;
+    setTorsoSettings: (settings: Partial<TorsoSettings>) => void;
+    loadRegistration: (caseId: string) => void;
+    saveRegistration: (caseId: string) => void;
+
+    // Bounds tracking
+    torsoBounds: BoundingBox3D | null;
+    ctBounds: BoundingBox3D | null;
+    setTorsoBounds: (bounds: BoundingBox3D) => void;
+    setCTBounds: (bounds: BoundingBox3D) => void;
+
+    // Alignment Actions
+    centerCTInTorso: () => void;
+    fitCTToTorso: () => void;
+
     // Reset
     resetSession: () => void;
 }
@@ -107,6 +128,20 @@ const initialRenderSettings: RenderSettings = {
     clippingEnabled: false,
 };
 
+const initialRegistration: VolumeRegistration = {
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+    scale: 1,
+};
+
+const initialTorsoSettings: TorsoSettings = {
+    opacity: 0.8,
+    wireframe: false,
+    ctVisible: true,
+    torsoBoundingBoxVisible: false,
+    ctBoundingBoxVisible: false,
+};
+
 export const useAppStore = create<AppState>((set) => ({
     // Case discovery
     cases: [],
@@ -132,6 +167,78 @@ export const useAppStore = create<AppState>((set) => ({
     snapshots: [],
     metrics: initialMetrics,
     volumeVoxelData: null,
+
+    // Registration and Torso settings
+    registration: initialRegistration,
+    setRegistration: (reg) => set({ registration: reg }),
+    torsoSettings: initialTorsoSettings,
+    setTorsoSettings: (settings) => set((state) => ({ torsoSettings: { ...state.torsoSettings, ...settings } })),
+    loadRegistration: (caseId) => {
+        const stored = localStorage.getItem(`registration_${caseId}`);
+        if (stored) {
+            try {
+                const reg = JSON.parse(stored);
+                set({ registration: reg });
+            } catch (e) {
+                console.error('Failed to parse registration json', e);
+                set({ registration: initialRegistration });
+            }
+        } else {
+            set({ registration: initialRegistration });
+        }
+    },
+    saveRegistration: (caseId) => {
+        set((state) => {
+            localStorage.setItem(`registration_${caseId}`, JSON.stringify(state.registration));
+            return state;
+        });
+    },
+
+    // Bounds tracking
+    torsoBounds: null,
+    ctBounds: null,
+    setTorsoBounds: (bounds) => set({ torsoBounds: bounds }),
+    setCTBounds: (bounds) => set({ ctBounds: bounds }),
+
+    // Alignment Actions
+    centerCTInTorso: () => set((state) => {
+        if (!state.torsoBounds || !state.ctBounds) return state;
+        
+        // Target: Torso center (in world)
+        // Current: CT center (in local scene space, unaffected by registration position yet)
+        // We want CT's local center * registration.scale + registration.position to land at torso center
+        const tx = state.torsoBounds.center[0] - state.ctBounds.center[0] * state.registration.scale;
+        const ty = state.torsoBounds.center[1] - state.ctBounds.center[1] * state.registration.scale;
+        const tz = state.torsoBounds.center[2] - state.ctBounds.center[2] * state.registration.scale;
+
+        return {
+            registration: {
+                ...state.registration,
+                position: [tx, ty, tz]
+            }
+        };
+    }),
+    fitCTToTorso: () => set((state) => {
+        if (!state.torsoBounds || !state.ctBounds) return state;
+
+        // Torso max world dimension
+        const tSize = state.torsoBounds.size;
+        const torsoMaxDim = Math.max(tSize[0], tSize[1], tSize[2]);
+
+        // CT max local scene dimension
+        const ctSize = state.ctBounds.size;
+        const ctMaxDim = Math.max(ctSize[0], ctSize[1], ctSize[2]);
+
+        // Target: CT size fits *inside* torso size with padding
+        const scale = (torsoMaxDim / ctMaxDim) * 0.8;
+
+        return {
+            registration: {
+                ...state.registration,
+                scale: parseFloat(scale.toFixed(2))
+            }
+        };
+    }),
 
     // Shared probe position/rotation (shared between ProbeControls and VolumeViewer)
     probePos: initialProbePos,
@@ -237,5 +344,7 @@ export const useAppStore = create<AppState>((set) => ({
             metrics: initialMetrics,
             volumeInfo: null,
             volumeVoxelData: null,
+            torsoBounds: null,
+            ctBounds: null,
         }),
 }));

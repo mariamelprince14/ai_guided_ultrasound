@@ -26,6 +26,8 @@ import * as THREE from 'three';
 import { useAppStore } from '@store/useAppStore';
 import { wsService } from '@services/websocket';
 import type { VolumeVoxelData } from '@/types';
+import { RegistrationPanel } from './RegistrationPanel';
+import { TorsoMesh } from './TorsoMesh';
 import styles from './VolumeViewer.module.css';
 
 // ── Euler helper (matches backend: Rz @ Ry @ Rx — extrinsic XYZ) ────────────
@@ -48,9 +50,9 @@ function buildProbeMatrix(
 
 // ── Raymarching Shader ────────────────────────────────────────────────────────
 const VOLUME_VERTEX_SHADER = `
-  varying vec3 v_world_pos;
+  varying vec3 v_local_pos;
   void main() {
-    v_world_pos = (modelMatrix * vec4(position, 1.0)).xyz;
+    v_local_pos = position;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
@@ -70,7 +72,7 @@ const VOLUME_FRAGMENT_SHADER = `
   uniform bool u_clipping_enabled;
   uniform vec3 u_probe_pos;
   
-  varying vec3 v_world_pos;
+  varying vec3 v_local_pos;
 
   // Random number for jittering
   float rand(vec2 co) {
@@ -100,7 +102,7 @@ const VOLUME_FRAGMENT_SHADER = `
   }
 
   void main() {
-    vec3 ray_dir = normalize(v_world_pos - u_cam_pos);
+    vec3 ray_dir = normalize(v_local_pos - u_cam_pos);
     vec2 t_hits = intersect_box(u_cam_pos, ray_dir);
     
     if (t_hits.x > t_hits.y) discard;
@@ -119,18 +121,18 @@ const VOLUME_FRAGMENT_SHADER = `
     float l_low = u_wl - u_ww * 0.5;
 
     for (int i = 0; i < 160; i++) {
-        vec3 curr_world = u_cam_pos + t * ray_dir;
+        vec3 curr_local = u_cam_pos + t * ray_dir;
         
-        // clipping logic (in world coordinates)
+        // clipping logic (in local coordinates)
         if (u_clipping_enabled) {
-            float dist = distance(curr_world, u_probe_pos);
-            if (dist > 60.0) { // 60mm radius (approx 6 scene units depending on scale)
+            float dist = distance(curr_local, u_probe_pos);
+            if (dist > 6.0) { // 60mm radius (approx 6 scene units depending on scale)
                 t += dt;
                 continue;
             }
         }
 
-        vec3 uvw = (curr_world - u_min) / (u_max - u_min);
+        vec3 uvw = (curr_local - u_min) / (u_max - u_min);
         
         float val = texture(u_data, uvw).r;
         float intensity = clamp((val - l_low) / u_ww, 0.0, 1.0);
@@ -186,10 +188,10 @@ interface VolumeRaymarchProps {
     probePos: { x: number; y: number; z: number };
 }
 
-const VolumeRaymarch: React.FC<VolumeRaymarchProps> = ({ 
-    voxelData, bounds, wl, ww, scale, clippingEnabled, probePos 
+const VolumeRaymarch: React.FC<VolumeRaymarchProps> = ({
+    voxelData, bounds, wl, ww, scale, clippingEnabled, probePos
 }) => {
-    const { camera } = useThree();
+    useThree();
     const textureRef = useRef<THREE.Data3DTexture | null>(null);
 
     // Initial texture creation
@@ -224,14 +226,24 @@ const VolumeRaymarch: React.FC<VolumeRaymarchProps> = ({
         u_probe_pos: { value: new THREE.Vector3() },
     }), [texture]);
 
+    const meshRef = useRef<THREE.Mesh>(null);
+
     // Efficiently update uniforms that change outside memoization
-    useFrame(() => {
-        uniforms.u_cam_pos.value.copy(camera.position);
+    useFrame(({ camera }) => {
+        if (!meshRef.current) return;
+        
+        // Convert world camera position to local mesh space
+        const invMat = meshRef.current.matrixWorld.clone().invert();
+        uniforms.u_cam_pos.value.copy(camera.position).applyMatrix4(invMat);
+        
         uniforms.u_min.value.set(bounds.min[0] * scale, bounds.min[1] * scale, bounds.min[2] * scale);
         uniforms.u_max.value.set(bounds.max[0] * scale, bounds.max[1] * scale, bounds.max[2] * scale);
         uniforms.u_wl.value = normWL;
         uniforms.u_ww.value = normWW;
         uniforms.u_clipping_enabled.value = clippingEnabled;
+
+        // probePos is in mm relative to CT origin. 
+        // We want it in "local scene space" which is mm * scale
         uniforms.u_probe_pos.value.set(probePos.x * scale, probePos.y * scale, probePos.z * scale);
     });
 
@@ -244,7 +256,7 @@ const VolumeRaymarch: React.FC<VolumeRaymarchProps> = ({
     const cz = ((bounds.min[2] + bounds.max[2]) / 2) * scale;
 
     return (
-        <mesh position={[cx, cy, cz]} scale={[1, 1, 1]}>
+        <mesh ref={meshRef} position={[cx, cy, cz]} scale={[1, 1, 1]}>
             <boxGeometry args={[sx, sy, sz]} />
             <shaderMaterial
                 vertexShader={VOLUME_VERTEX_SHADER}
@@ -503,7 +515,7 @@ const ProbeMesh3D: React.FC<ProbeMeshProps> = ({ scale, onDragStart, onDragEnd, 
                 <boxGeometry args={[bodyRad * 2, bodyLen, bodyRad]} />
                 <meshStandardMaterial color="#334155" roughness={0.3} metalness={0.8} />
             </mesh>
-            
+
             {/* Probe Head / Footprint */}
             <mesh position={[0, footThick / 2, 0]} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}>
                 <boxGeometry args={[footRad * 2, footThick, footRad]} />
@@ -610,10 +622,10 @@ const SlicePlaneOutline: React.FC<{ planeSizeMm: number; scale: number }> = ({ p
     });
 
     const positions = new Float32Array([
-        -half, -half, 0,  half, -half, 0,
-        half, -half, 0,   half,  half, 0,
-        half,  half, 0,  -half,  half, 0,
-        -half,  half, 0, -half, -half, 0,
+        -half, -half, 0, half, -half, 0,
+        half, -half, 0, half, half, 0,
+        half, half, 0, -half, half, 0,
+        -half, half, 0, -half, -half, 0,
         // Cross-hair lines
         -half, 0, 0, half, 0, 0,
         0, -half, 0, 0, half, 0,
@@ -667,7 +679,7 @@ interface DragControllerProps {
 }
 
 const DragController: React.FC<DragControllerProps> = ({ volumeBounds, scale }) => {
-    const { probePos, probeRot, setProbePos, updatePose } = useAppStore();
+    const { probePos, probeRot, setProbePos, updatePose, registration } = useAppStore();
     const { gl } = useThree();
 
     const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
@@ -686,10 +698,19 @@ const DragController: React.FC<DragControllerProps> = ({ volumeBounds, scale }) 
     const sendThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const handleDrag = useCallback((delta: THREE.Vector3) => {
-        // delta is in scene space — convert back to mm
-        const dx = delta.x / scale;
-        const dy = delta.y / scale;
-        const dz = delta.z / scale;
+        const euler = new THREE.Euler(
+            THREE.MathUtils.degToRad(registration.rotation[0]),
+            THREE.MathUtils.degToRad(registration.rotation[1]),
+            THREE.MathUtils.degToRad(registration.rotation[2]),
+            'XYZ'
+        );
+        const invQuat = new THREE.Quaternion().setFromEuler(euler).invert();
+        const localDelta = delta.clone().applyQuaternion(invQuat);
+
+        // delta is in scene space — convert back to local CT mm
+        const dx = localDelta.x / (scale * registration.scale);
+        const dy = localDelta.y / (scale * registration.scale);
+        const dz = localDelta.z / (scale * registration.scale);
 
         const newPos = {
             x: clamp(probePos.x + dx, volumeBounds.min[0], volumeBounds.max[0]),
@@ -707,7 +728,7 @@ const DragController: React.FC<DragControllerProps> = ({ volumeBounds, scale }) 
                 probeRot.pitch, probeRot.yaw, probeRot.roll
             );
         }, 30); // ~33fps
-    }, [probePos, probeRot, scale, volumeBounds, setProbePos, updatePose]);
+    }, [probePos, probeRot, scale, volumeBounds, setProbePos, updatePose, registration]);
 
     return (
         <ProbeMesh3D
@@ -722,14 +743,18 @@ const DragController: React.FC<DragControllerProps> = ({ volumeBounds, scale }) 
 // ── Main VolumeViewer component ───────────────────────────────────────────────
 export const VolumeViewer: React.FC = () => {
     const controlsRef = useRef<any>(null);
-    const { 
-        volumeInfo, 
-        volumeVoxelData, 
-        renderSettings, 
-        probePos, 
-        probeRot, 
+    const {
+        volumeInfo,
+        volumeVoxelData,
+        renderSettings,
+        probePos,
+        probeRot,
         updateRenderSettings,
-        currentFrame 
+        currentFrame,
+        registration,
+        setRegistration,
+        torsoSettings,
+        setCTBounds
     } = useAppStore();
 
     // Use real volume bounds if available, otherwise sensible defaults
@@ -755,8 +780,29 @@ export const VolumeViewer: React.FC = () => {
 
     const planeSizeMm = renderSettings.planeSizeMm || 150;
 
+    // Auto-center CT on first load
+    React.useEffect(() => {
+        if (volumeInfo && registration.position[0] === 0 && registration.position[1] === 0 && registration.position[2] === 0) {
+            setRegistration({
+                ...registration,
+                position: [-volumeInfo.bounds.center[0], -volumeInfo.bounds.center[1], -volumeInfo.bounds.center[2]]
+            });
+        }
+    }, [volumeInfo, setRegistration]); // Only run when volumeInfo changes and reg is empty
+
+    // Report CT bounds to store (in mm)
+    React.useEffect(() => {
+        setCTBounds({
+            min: bounds.min,
+            max: bounds.max,
+            center: bounds.center,
+            size: [bounds.max[0] - bounds.min[0], bounds.max[1] - bounds.min[1], bounds.max[2] - bounds.min[2]]
+        });
+    }, [bounds, setCTBounds]);
+
     return (
         <div className={styles.container}>
+            <RegistrationPanel />
             {/* Top HUD */}
             <div className={styles.overlay}>
                 <span className={styles.label}>3D VOLUME</span>
@@ -800,7 +846,7 @@ export const VolumeViewer: React.FC = () => {
             <div className={styles.hintBadge}>
                 <div className={styles.visualToggles}>
                     <label className={styles.toggleLabel}>
-                        <input 
+                        <input
                             type="checkbox"
                             checked={renderSettings.clippingEnabled}
                             onChange={(e) => updateRenderSettings({ clippingEnabled: e.target.checked })}
@@ -810,7 +856,7 @@ export const VolumeViewer: React.FC = () => {
                 </div>
                 <div className={styles.divider} />
                 <span>🖱 Drag probe · Orbit: right-click</span>
-                <button 
+                <button
                     className={styles.resetBtn}
                     onClick={() => controlsRef.current?.reset()}
                     title="Reset camera view"
@@ -828,7 +874,7 @@ export const VolumeViewer: React.FC = () => {
                 >
                     <PerspectiveCamera
                         makeDefault
-                        position={[cx + camDist * 0.6, cy + camDist * 0.5, cz + camDist * 0.8]}
+                        position={[camDist * 0.6, camDist * 0.5, camDist * 0.8]}
                         fov={45}
                         near={0.01}
                         far={500}
@@ -845,52 +891,77 @@ export const VolumeViewer: React.FC = () => {
                         }}
                         minDistance={SCENE_SIZE * 0.4}
                         maxDistance={SCENE_SIZE * 6}
-                        target={[cx, cy, cz]}
+                        target={[0, 0, 0]}
                     />
 
                     <ambientLight intensity={0.4} />
                     <directionalLight position={[10, 20, 10]} intensity={0.8} castShadow />
                     <pointLight position={[-10, 10, -10]} intensity={0.4} color="#6366f1" />
 
-                    {/* Volume bounding box */}
-                    {/* Volume Render (Raymarching) */}
-                    {volumeVoxelData && (
-                        <VolumeRaymarch
-                            voxelData={volumeVoxelData}
-                            bounds={bounds}
-                            wl={renderSettings.wl}
-                            ww={renderSettings.ww}
-                            scale={scale}
-                            clippingEnabled={renderSettings.clippingEnabled}
-                            probePos={probePos}
-                        />
+                    <React.Suspense fallback={null}>
+                        <TorsoMesh />
+                    </React.Suspense>
+
+                    {torsoSettings?.ctVisible && (
+                        <group
+                            position={[
+                                registration.position[0] * scale,
+                                registration.position[1] * scale,
+                                registration.position[2] * scale,
+                            ]}
+                        >
+                            <group
+                                position={[cx, cy, cz]}
+                                rotation={[
+                                    THREE.MathUtils.degToRad(registration.rotation[0]),
+                                    THREE.MathUtils.degToRad(registration.rotation[1]),
+                                    THREE.MathUtils.degToRad(registration.rotation[2]),
+                                ]}
+                                scale={[registration.scale, registration.scale, registration.scale]}
+                            >
+                                <group position={[-cx, -cy, -cz]}>
+                                    {/* Volume Render (Raymarching) */}
+                                    {volumeVoxelData && (
+                                        <VolumeRaymarch
+                                            voxelData={volumeVoxelData}
+                                            bounds={bounds}
+                                            wl={renderSettings.wl}
+                                            ww={renderSettings.ww}
+                                            scale={scale}
+                                            clippingEnabled={renderSettings.clippingEnabled}
+                                            probePos={probePos}
+                                        />
+                                    )}
+
+                                    {!volumeVoxelData && (
+                                        <VolumeBounds min={bounds.min} max={bounds.max} scale={scale} />
+                                    )}
+
+                                    {/* Anatomical markers */}
+                                    <DirectionLabels min={bounds.min} max={bounds.max} scale={scale} />
+                                    <AxisLines min={bounds.min} max={bounds.max} scale={scale} />
+
+                                    {/* Slice plane + outline */}
+                                    <SlicePlane3D
+                                        planeSizeMm={planeSizeMm}
+                                        scale={scale}
+                                        currentFrame={currentFrame}
+                                    />
+                                    <SlicePlaneOutline planeSizeMm={planeSizeMm} scale={scale} />
+
+                                    {/* Beam direction line */}
+                                    <BeamIndicator scale={scale} />
+
+                                    {/* Probe mesh with drag */}
+                                    <DragController volumeBounds={bounds} scale={scale} />
+                                </group>
+                            </group>
+                        </group>
                     )}
-
-                    {!volumeVoxelData && (
-                        <VolumeBounds min={bounds.min} max={bounds.max} scale={scale} />
-                    )}
-
-                    {/* Anatomical markers */}
-                    <DirectionLabels min={bounds.min} max={bounds.max} scale={scale} />
-                    <AxisLines min={bounds.min} max={bounds.max} scale={scale} />
-
-                    {/* Slice plane + outline */}
-                    <SlicePlane3D 
-                        planeSizeMm={planeSizeMm} 
-                        scale={scale} 
-                        currentFrame={currentFrame}
-                    />
-                    <SlicePlaneOutline planeSizeMm={planeSizeMm} scale={scale} />
-
-                    {/* Beam direction line */}
-                    <BeamIndicator scale={scale} />
-
-                    {/* Probe mesh with drag */}
-                    <DragController volumeBounds={bounds} scale={scale} />
 
                     {/* Floor grid */}
                     <Grid
-                        position={[cx, (bounds.min[1]) * scale - 0.01, cz]}
+                        position={[0, -SCENE_SIZE * 0.5, 0]}
                         args={[SCENE_SIZE * 3, SCENE_SIZE * 3]}
                         cellSize={SCENE_SIZE / 10}
                         cellThickness={0.5}

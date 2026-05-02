@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # ── Dataset root ─────────────────────────────────────────────────────────────
 # Absolute path to the folder containing all case sub-directories
-DATASET_ROOT = Path(r"E:\downloads\usdemo\ct.volumes\3d test")
+DATASET_ROOT = Path(r"/Users/ahmedbahaa/Documents/Ai_guided_ultrasound/ai_guided_ultrasound/backend/3d test")
 
 # LRU cache size: how many volumes to keep in memory simultaneously
 CACHE_SIZE = 3
