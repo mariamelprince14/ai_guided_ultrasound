@@ -1,0 +1,279 @@
+@import '@styles/simulator-theme.css';
+
+.container {
+    position: fixed;
+    bottom: 32px;
+    left: 32px;
+    max-width: 380px;
+    z-index: var(--sim-z-overlay);
+    animation: slideInUp 400ms ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(96, 165, 250, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+    }
+}
+
+/* Type Variants */
+.instruction {
+    --guidance-primary: var(--sim-accent-info);
+    --guidance-bg: rgba(96, 165, 250, 0.1);
+    --guidance-border: var(--sim-accent-info);
+}
+
+.warning {
+    --guidance-primary: var(--sim-accent-warning);
+    --guidance-bg: rgba(250, 204, 21, 0.1);
+    --guidance-border: var(--sim-accent-warning);
+}
+
+.success {
+    --guidance-primary: var(--sim-accent-success);
+    --guidance-bg: rgba(74, 222, 128, 0.1);
+    --guidance-border: var(--sim-accent-success);
+}
+
+.info {
+    --guidance-primary: var(--sim-accent-info);
+    --guidance-bg: rgba(96, 165, 250, 0.1);
+    --guidance-border: var(--sim-accent-info);
+}
+
+.suggestion {
+    --guidance-primary: var(--sim-guidance-primary);
+    --guidance-bg: rgba(99, 102, 241, 0.1);
+    --guidance-border: var(--sim-guidance-primary);
+}
+
+/* Card */
+.card {
+    background: var(--guidance-bg);
+    border: 2px solid var(--guidance-border);
+    border-radius: var(--sim-radius-xl);
+    padding: var(--sim-spacing-lg);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+        90deg,
+        var(--guidance-primary),
+        transparent,
+        var(--guidance-primary)
+    );
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    gap: var(--sim-spacing-md);
+    margin-bottom: var(--sim-spacing-md);
+    position: relative;
+    z-index: 1;
+}
+
+.iconWrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--guidance-primary) 0%, var(--guidance-primary) 100%);
+    border-radius: var(--sim-radius-lg);
+    color: white;
+    flex-shrink: 0;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+.title {
+    flex: 1;
+    color: var(--sim-text-primary);
+    font-size: var(--sim-font-size-lg);
+    font-weight: var(--sim-font-weight-bold);
+}
+
+.closeButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--sim-radius-md);
+    color: var(--sim-text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all var(--sim-transition-fast);
+}
+
+.closeButton:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--sim-text-primary);
+}
+
+/* Detail Text */
+.detail {
+    color: var(--sim-text-secondary);
+    font-size: var(--sim-font-size-sm);
+    line-height: 1.5;
+    margin-bottom: var(--sim-spacing-md);
+    padding: var(--sim-spacing-md);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--sim-radius-md);
+    border-left: 3px solid var(--guidance-primary);
+}
+
+/* Action Box */
+.actionBox {
+    display: flex;
+    align-items: center;
+    gap: var(--sim-spacing-md);
+    padding: var(--sim-spacing-md);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--sim-radius-lg);
+    margin-top: var(--sim-spacing-md);
+}
+
+.actionIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--guidance-primary) 0%, var(--guidance-primary) 100%);
+    border-radius: var(--sim-radius-lg);
+    color: white;
+    flex-shrink: 0;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.actionText {
+    color: var(--sim-text-primary);
+    font-size: var(--sim-font-size-sm);
+    font-weight: var(--sim-font-weight-semibold);
+    flex: 1;
+}
+
+.rotateReverse {
+    animation: reverseRotate 2s linear infinite;
+}
+
+@keyframes reverseRotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(-360deg);
+    }
+}
+
+/* Pulse */
+.pulse {
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, var(--guidance-primary) 0%, transparent 70%);
+    opacity: 0.1;
+    animation: pulseBg 2s ease-out infinite;
+    pointer-events: none;
+}
+
+@keyframes pulseBg {
+    0% {
+        transform: scale(0);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .container {
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        max-width: none;
+    }
+
+    .card {
+        padding: var(--sim-spacing-md);
+    }
+
+    .header {
+        gap: var(--sim-spacing-sm);
+        margin-bottom: var(--sim-spacing-sm);
+    }
+
+    .iconWrapper {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+
+    .title {
+        font-size: var(--sim-font-size-base);
+    }
+
+    .detail {
+        font-size: var(--sim-font-size-xs);
+        padding: var(--sim-spacing-sm);
+    }
+
+    .actionBox {
+        gap: var(--sim-spacing-sm);
+        padding: var(--sim-spacing-sm);
+    }
+
+    .actionIcon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .actionText {
+        font-size: var(--sim-font-size-xs);
+    }
+}

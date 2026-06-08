@@ -8,7 +8,8 @@ import {
     ScanEye,
     ArrowRight,
     AlertTriangle,
-    CheckCircle2
+    CheckCircle2,
+    Settings
 } from 'lucide-react';
 import type { TrainingMode } from '@/types';
 import clsx from 'clsx';
@@ -149,6 +150,14 @@ export const ModeSelection: React.FC = () => {
                         Initialize Training Session <ArrowRight size={20} />
                     </span>
                 </Button>
+                
+                <div 
+                    className={styles.devLink}
+                    onClick={() => navigate('/registration')}
+                >
+                    <Settings size={14} />
+                    Calibration & System Registration
+                </div>
             </div>
         </div>
     );

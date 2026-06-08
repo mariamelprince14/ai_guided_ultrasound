@@ -1,0 +1,238 @@
+@import '@styles/simulator-theme.css';
+
+/**
+ * TrainingWorkspaceLayout.module.css
+ * ──────────────────────────────────
+ * Split-view layout: 3D simulation on left, ultrasound panel on right
+ */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100vh;
+    background: var(--sim-bg-primary);
+    color: var(--sim-text-primary);
+    font-family: var(--sim-font-family);
+    overflow: hidden;
+}
+
+/* Main Content Area - Below Header */
+.mainContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-top: 64px; /* Space for header */
+}
+
+/* Split View Container - 70% left / 30% right */
+.splitViewContainer {
+    flex: 1;
+    display: flex;
+    gap: 0;
+    overflow: hidden;
+    background: var(--sim-bg-primary);
+}
+
+/* LEFT PANEL: 3D Simulation (70%) */
+.leftPanel {
+    flex: 0 0 70%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--sim-border-light);
+    background: linear-gradient(
+        135deg,
+        var(--sim-bg-secondary) 0%,
+        var(--sim-bg-primary) 100%
+    );
+}
+
+.volumeViewport {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--sim-bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.controlsBar {
+    flex: 0 0 auto;
+    padding: var(--sim-spacing-md) var(--sim-spacing-lg);
+    background: linear-gradient(
+        180deg,
+        rgba(10, 14, 39, 0) 0%,
+        rgba(10, 14, 39, 0.95) 100%
+    );
+    border-top: 1px solid var(--sim-border-light);
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+/* RIGHT PANEL: Ultrasound Imaging (30%) */
+.rightPanel {
+    flex: 0 0 30%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--sim-bg-secondary);
+    border-left: 1px solid var(--sim-border-light);
+}
+
+/* Ultrasound Viewer - Professional Monitor Appearance */
+.ultrasoundViewer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--sim-surface-secondary);
+    border-bottom: 1px solid var(--sim-border-light);
+    padding: var(--sim-spacing-md);
+    gap: var(--sim-spacing-sm);
+}
+
+.ultrasoundViewer > * {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* AI Coaching Area - Below Ultrasound */
+.coachingArea {
+    flex: 0 0 auto;
+    padding: var(--sim-spacing-md);
+    background: var(--sim-surface-primary);
+    border-top: 1px solid var(--sim-border-light);
+    overflow-y: auto;
+    max-height: 200px;
+}
+
+/* Metrics Bar - Bottom */
+.metricsBar {
+    flex: 0 0 auto;
+    min-height: 80px;
+    padding: var(--sim-spacing-md) var(--sim-spacing-lg);
+    background-color: var(--sim-surface-secondary);
+    border-top: 1px solid var(--sim-border-light);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--sim-spacing-lg);
+    overflow-x: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Responsive Design
+   ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1400px) {
+    .splitViewContainer {
+        flex-direction: column;
+    }
+
+    .leftPanel {
+        flex: 0 0 60%;
+        border-right: none;
+        border-bottom: 1px solid var(--sim-border-light);
+    }
+
+    .rightPanel {
+        flex: 0 0 40%;
+        border-left: none;
+    }
+
+    .ultrasoundViewer {
+        max-height: 300px;
+    }
+
+    .coachingArea {
+        max-height: 150px;
+    }
+}
+
+@media (max-width: 768px) {
+    .mainContent {
+        padding-top: 60px;
+    }
+
+    .splitViewContainer {
+        flex-direction: column;
+    }
+
+    .leftPanel {
+        flex: 0 0 50%;
+        border-right: none;
+        border-bottom: 1px solid var(--sim-border-light);
+    }
+
+    .rightPanel {
+        flex: 0 0 50%;
+        border-left: none;
+    }
+
+    .controlsBar {
+        max-height: 140px;
+    }
+
+    .metricsBar {
+        min-height: 70px;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: var(--sim-spacing-md);
+    }
+}
+
+@media (max-width: 480px) {
+    .mainContent {
+        padding-top: 56px;
+    }
+
+    .splitViewContainer {
+        flex-direction: column;
+    }
+
+    .leftPanel {
+        flex: 1;
+    }
+
+    .rightPanel {
+        flex: 1;
+    }
+
+    .controlsBar {
+        max-height: 120px;
+        padding: var(--sim-spacing-sm) var(--sim-spacing-md);
+    }
+
+    .coachingArea {
+        max-height: 120px;
+        padding: var(--sim-spacing-sm) var(--sim-spacing-md);
+    }
+
+    .metricsBar {
+        min-height: 60px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--sim-spacing-sm);
+        padding: var(--sim-spacing-md);
+    }
+
+    .ultrasoundViewer {
+        padding: var(--sim-spacing-sm);
+    }
+}
+
+/* Print Styles */
+@media print {
+    .container {
+        height: auto;
+        background: white;
+    }
+
+    .rightPanel {
+        display: none;
+    }
+
+    .metricsBar {
+        display: none;
+    }
+}

@@ -28,6 +28,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from contextlib import asynccontextmanager
 from typing import Optional
 
 import numpy as np
@@ -53,8 +54,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ── App ───────────────────────────────────────────────────────────────────────
-app = FastAPI(title="US Training Backend", version="1.0.0")
+# ── App Initialization ────────────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Initializing case manager...")
+    case_manager.initialize()
+    logger.info("Backend ready.")
+    yield
+    logger.info("Shutting down backend...")
+
+app = FastAPI(
+    title="AI Ultrasound Training Simulator",
+    description="Professional ultrasound simulation backend with real-time reslicing",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -75,15 +89,16 @@ def _default_session_settings() -> dict:
         "show_seg": False,
         "plane_size_mm": 150.0,
         "resolution": 512,
+        "pressure": 0.0,
+        "contact_quality": 100.0,
+        "probe_type": "curvilinear",
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "roll": 0.0,
     }
 
 
-# ── Startup ───────────────────────────────────────────────────────────────────
-@app.on_event("startup")
-async def startup():
-    logger.info("Initializing case manager...")
-    case_manager.initialize()
-    logger.info("Backend ready.")
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -139,6 +154,98 @@ async def get_case_volume(case_id: str):
         media_type="application/octet-stream",
         headers=headers
     )
+
+
+@app.get("/api/alignment/{case_id}")
+async def get_case_alignment(case_id: str):
+    """Return pre-computed alignment data for a case."""
+    alignment = case_manager.get_alignment(case_id)
+    if not alignment:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return alignment
+
+
+@app.get("/api/cases/{case_id}/anatomy")
+async def get_case_anatomy(case_id: str):
+    """
+    Return the real NIfTI affine matrix and derived orientation metadata
+    for a case. This is the ground truth for anatomical coordinate alignment.
+
+    Returns:
+        affine: 4x4 matrix (voxel -> world mm, nibabel convention)
+        axisOrientations: which anatomical direction each voxel axis encodes
+        axisCodes: nibabel orientation codes (e.g. ['L','P','S'])
+        worldBounds: {min:[x,y,z], max:[x,y,z], center:[x,y,z], size:[w,h,d]} in mm
+        voxelSpacing: [dx, dy, dz] in mm
+        shape: [D, H, W] in backend (Z,Y,X) storage order
+        niftiShape: [X, Y, Z] in nibabel convention
+        convention: 'LPS' | 'RAS' | etc.
+    """
+    import nibabel as nib
+    import nibabel.orientations as nibo
+
+    info = case_manager.get_case_info(case_id)
+    if info is None or info.volume_path is None:
+        raise HTTPException(status_code=404, detail=f"Case '{case_id}' not found")
+
+    try:
+        img = nib.load(str(info.volume_path))
+        affine = img.affine.astype(np.float64)  # type: ignore
+        header = img.header
+        nifti_shape = img.shape  # type: ignore  # (X, Y, Z) nibabel order
+
+        # Voxel spacing
+        zooms = header.get_zooms()[:3]  # type: ignore
+        voxel_spacing = [float(zooms[0]), float(zooms[1]), float(zooms[2])]
+
+        # Orientation codes - the anatomical direction each nibabel axis encodes
+        ornt = nibo.io_orientation(affine)
+        axis_codes = list(nibo.ornt2axcodes(ornt))
+
+        # Direction cosines (which anatomical directions the voxel axes point)
+        dc_i = (affine[:3, 0] / np.linalg.norm(affine[:3, 0])).tolist()
+        dc_j = (affine[:3, 1] / np.linalg.norm(affine[:3, 1])).tolist()
+        dc_k = (affine[:3, 2] / np.linalg.norm(affine[:3, 2])).tolist()
+
+        # World bounds (8 corners of the volume)
+        W, H, D = nifti_shape[0], nifti_shape[1], nifti_shape[2]
+        corners_vox = np.array([
+            [0, 0, 0, 1], [W, 0, 0, 1], [0, H, 0, 1], [W, H, 0, 1],
+            [0, 0, D, 1], [W, 0, D, 1], [0, H, D, 1], [W, H, D, 1],
+        ], dtype=np.float64).T
+        corners_world = affine @ corners_vox
+
+        xs, ys, zs = corners_world[0], corners_world[1], corners_world[2]
+        world_bounds = {
+            "min": [float(xs.min()), float(ys.min()), float(zs.min())],
+            "max": [float(xs.max()), float(ys.max()), float(zs.max())],
+            "center": [float(xs.mean()), float(ys.mean()), float(zs.mean())],
+            "size": [float(xs.max() - xs.min()), float(ys.max() - ys.min()),
+                     float(zs.max() - zs.min())],
+        }
+
+        # Determine convention string
+        convention = "".join(axis_codes)
+
+        return {
+            "caseId": case_id,
+            "affine": affine.tolist(),
+            "axisOrientations": {
+                "i": dc_i,
+                "j": dc_j,
+                "k": dc_k,
+            },
+            "axisCodes": axis_codes,
+            "convention": convention,
+            "worldBounds": world_bounds,
+            "voxelSpacing": voxel_spacing,
+            "niftiShape": list(nifti_shape),
+            "backendShape": [nifti_shape[2], nifti_shape[1], nifti_shape[0]],  # (D,H,W) = (Z,Y,X)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get anatomy metadata for {case_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to read NIfTI metadata: {str(e)}")
 
 
 class CreateSessionRequest(BaseModel):
@@ -351,6 +458,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             volume.array, s["affine_inv"], matrix,
             plane_size_mm=(cfg["plane_size_mm"], cfg["plane_size_mm"]),
             resolution=(cfg["resolution"], cfg["resolution"]),
+            pressure=cfg.get("pressure", 0.0),
         )
         seg_slice = None
         if cfg["show_seg"] and volume.seg_array is not None:
@@ -358,12 +466,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 volume.seg_array, s["affine_inv"], matrix,
                 plane_size_mm=(cfg["plane_size_mm"], cfg["plane_size_mm"]),
                 resolution=(cfg["resolution"], cfg["resolution"]),
+                pressure=cfg.get("pressure", 0.0),
             )
         b64 = render_to_base64(
             ct_slice, seg_slice=seg_slice,
             show_segmentation=cfg["show_seg"],
             window_level_params=(cfg["wl"], cfg["ww"]),
             output_size=(cfg["resolution"], cfg["resolution"]),
+            pressure=cfg.get("pressure", 0.0),
+            contact_quality=cfg.get("contact_quality", 100.0),
+            probe_type=cfg.get("probe_type", "curvilinear"),
+            yaw=cfg.get("yaw", 0.0),
+            pitch=cfg.get("pitch", 0.0),
+            roll=cfg.get("roll", 0.0),
         )
         await websocket.send_json({
             "type": "ultrasoundFrame",
@@ -391,6 +506,15 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 )
                 probe_matrix = pose_to_matrix(pose)
                 s["probe_matrix"] = probe_matrix.tolist()
+                
+                # Parse additional dynamic properties
+                settings["pressure"] = float(data.get("pressure", 0.0))
+                settings["contact_quality"] = float(data.get("contactQuality", 100.0))
+                settings["probe_type"] = data.get("probeType", "curvilinear")
+                settings["yaw"] = float(data.get("yaw", 0.0))
+                settings["pitch"] = float(data.get("pitch", 0.0))
+                settings["roll"] = float(data.get("roll", 0.0))
+                
                 await send_frame(probe_matrix, settings)
 
             elif msg_type == "matrixUpdate":
@@ -409,10 +533,34 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 await send_frame(probe_matrix, settings)
 
             elif msg_type == "capture":
+                # Compute slices (matching the live view logic)
+                ct_slice = reslice(
+                    volume.array, s["affine_inv"], probe_matrix,
+                    plane_size_mm=(settings["plane_size_mm"], settings["plane_size_mm"]),
+                    resolution=(settings["resolution"], settings["resolution"]),
+                    pressure=settings.get("pressure", 0.0),
+                )
+                seg_slice = None
+                if settings["show_seg"] and volume.seg_array is not None:
+                    seg_slice = reslice_segmentation(
+                        volume.seg_array, s["affine_inv"], probe_matrix,
+                        plane_size_mm=(settings["plane_size_mm"], settings["plane_size_mm"]),
+                        resolution=(settings["resolution"], settings["resolution"]),
+                        pressure=settings.get("pressure", 0.0),
+                    )
+
                 png_bytes = render_slice(
-                    reslice(volume.array, s["affine_inv"], probe_matrix),
+                    ct_slice,
+                    seg_slice=seg_slice,
                     show_segmentation=settings["show_seg"],
                     window_level_params=(settings["wl"], settings["ww"]),
+                    output_size=(settings["resolution"], settings["resolution"]),
+                    pressure=settings.get("pressure", 0.0),
+                    contact_quality=settings.get("contact_quality", 100.0),
+                    probe_type=settings.get("probe_type", "curvilinear"),
+                    yaw=settings.get("yaw", 0.0),
+                    pitch=settings.get("pitch", 0.0),
+                    roll=settings.get("roll", 0.0),
                 )
                 result = capture_mod.save_capture(
                     session_id=session_id,

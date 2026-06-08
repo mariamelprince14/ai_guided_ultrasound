@@ -17,8 +17,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     return (
         <div className={styles.workspace}>
             {header && <div className={styles.header}>{header}</div>}
-            <div className={styles.grid}>
-                <div className={styles.leftPanel}>{leftPanel}</div>
+            <div className={`${styles.grid} ${!leftPanel ? styles.noLeft : ''}`}>
+                {leftPanel && <div className={styles.leftPanel}>{leftPanel}</div>}
                 <div className={styles.centerPanel}>{centerPanel}</div>
                 <div className={styles.rightPanel}>{rightPanel}</div>
             </div>

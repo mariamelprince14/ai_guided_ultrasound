@@ -148,6 +148,20 @@ class ApiService {
 
         return { data, metadata };
     }
+
+    /** Fetch pre-computed alignment data for a case */
+    async getAlignment(caseId: string): Promise<any> {
+        return this.request(`/api/alignment/${caseId}`);
+    }
+
+    /**
+     * Fetch NIfTI anatomy metadata for a case.
+     * Returns the real affine matrix, axis orientation codes, and world bounds.
+     * This is the ground truth for anatomical coordinate embedding.
+     */
+    async getAnatomyMetadata(caseId: string): Promise<import('@/types').AnatomyMetadata> {
+        return this.request(`/api/cases/${caseId}/anatomy`);
+    }
 }
 
 export const apiService = new ApiService();

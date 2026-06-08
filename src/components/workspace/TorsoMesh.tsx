@@ -22,7 +22,7 @@ import * as THREE from 'three';
 
 export const TorsoMesh: React.FC = () => {
     const gltf = useGLTF('/torso.glb');
-    const { torsoSettings } = useAppStore();
+    const { torsoSettings, visualizationSettings } = useAppStore();
     const setTorsoBounds = useAppStore(state => state.setTorsoBounds);
     const groupRef = useRef<THREE.Group>(null);
     const clonedScene = useMemo(() => gltf.scene.clone(true), [gltf.scene]);
@@ -46,8 +46,8 @@ export const TorsoMesh: React.FC = () => {
         torsoBB.getSize(tSize);
         const torsoMaxDim = Math.max(tSize.x, tSize.y, tSize.z);
 
-        // Uniform fixed scale so the torso is nominally ~14 units (roughly matches standard CT scene mappings)
-        const s = 14 / torsoMaxDim;
+        // Uniform fixed scale so the torso is nominally ~16 units (dominant focus)
+        const s = 16 / torsoMaxDim;
 
         // Position: place scaled torso center perfectly at world origin [0,0,0]
         const pos: [number, number, number] = [
@@ -66,34 +66,39 @@ export const TorsoMesh: React.FC = () => {
         return { torsoPosition: pos, torsoScale: s, bounds3d: finalBB };
     }, [torsoBB]);
 
+    const setMmToSceneScale = useAppStore(state => state.setMmToSceneScale);
+
     // Push bounding box to the store for alignment operations
     useEffect(() => {
         if (bounds3d) {
             setTorsoBounds(bounds3d);
+            setMmToSceneScale(torsoScale);
         }
-    }, [bounds3d, setTorsoBounds]);
+    }, [bounds3d, torsoScale, setTorsoBounds, setMmToSceneScale]);
 
-    // Apply material overrides whenever settings change
+    // Apply material overrides and shadows whenever settings change
     useEffect(() => {
         if (!clonedScene || !torsoSettings) return;
         clonedScene.traverse((child: any) => {
             if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
                 child.material = new THREE.MeshPhysicalMaterial({
                     color: '#e8b4a0',
                     transparent: true,
-                    opacity: torsoSettings.opacity,
+                    opacity: visualizationSettings.torsoOpacity,
                     wireframe: torsoSettings.wireframe,
-                    depthWrite: torsoSettings.opacity > 0.95,
-                    side: THREE.DoubleSide,
+                    depthWrite: visualizationSettings.torsoOpacity > 0.9,
+                    side: THREE.FrontSide,
                     roughness: 0.7,
-                    metalness: 0.05,
-                    clearcoat: 0.1,
+                    metalness: 0.1,
+                    clearcoat: 0.2,
                 });
             }
         });
-    }, [clonedScene, torsoSettings?.opacity, torsoSettings?.wireframe]);
+    }, [clonedScene, visualizationSettings.torsoOpacity, torsoSettings.wireframe]);
 
-    if (!torsoSettings) return null;
+    if (!torsoSettings || !visualizationSettings.showTorso) return null;
 
     return (
         <group>
@@ -101,15 +106,10 @@ export const TorsoMesh: React.FC = () => {
                 ref={groupRef}
                 position={torsoPosition}
                 scale={[torsoScale, torsoScale, torsoScale]}
+                rotation={[0, Math.PI, 0]}
             >
-                <primitive object={clonedScene} />
+                <primitive object={clonedScene} name="torso-model" />
             </group>
-            {torsoSettings.torsoBoundingBoxVisible && bounds3d && (
-                <mesh position={bounds3d.center}>
-                    <boxGeometry args={bounds3d.size} />
-                    <meshBasicMaterial color="#e8b4a0" wireframe transparent opacity={0.3} />
-                </mesh>
-            )}
         </group>
     );
 };

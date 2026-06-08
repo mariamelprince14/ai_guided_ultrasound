@@ -25,6 +25,40 @@ export interface VolumeInfo {
     };
 }
 
+/**
+ * Anatomical coordinate metadata derived from the NIfTI affine.
+ * Retrieved from GET /api/cases/{caseId}/anatomy.
+ * This is the ground truth for anatomical embedding — never assume orientation.
+ */
+export interface AnatomyMetadata {
+    caseId: string;
+    /** 4x4 NIfTI affine matrix: maps voxel (i,j,k) → world (x,y,z) in mm */
+    affine: number[][];
+    /** Unit direction cosines for each voxel axis in world space */
+    axisOrientations: {
+        i: [number, number, number];   // nibabel i-axis → world xyz
+        j: [number, number, number];   // nibabel j-axis → world xyz
+        k: [number, number, number];   // nibabel k-axis → world xyz
+    };
+    /** Nibabel orientation codes e.g. ['L','P','S'] or ['R','A','S'] */
+    axisCodes: [string, string, string];
+    /** Convention string e.g. 'LPS', 'RAS' */
+    convention: string;
+    /** World-space bounding box of the volume in mm */
+    worldBounds: {
+        min: [number, number, number];
+        max: [number, number, number];
+        center: [number, number, number];
+        size: [number, number, number];
+    };
+    /** Voxel spacing [dx, dy, dz] in mm (nibabel i,j,k order) */
+    voxelSpacing: [number, number, number];
+    /** Volume shape in nibabel (X,Y,Z) order */
+    niftiShape: [number, number, number];
+    /** Volume shape in backend (D,H,W) = (Z,Y,X) storage order */
+    backendShape: [number, number, number];
+}
+
 export interface VolumeVoxelData {
     data: Uint8Array;
     metadata: {
@@ -72,12 +106,61 @@ export type ProbeType = 'linear' | 'curvilinear';
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
+// Visualization Modes - Progressive Disclosure
+export type VisualizationMode = 'beginner' | 'intermediate' | 'advanced';
+
+export interface VisualizationSettings {
+    mode: VisualizationMode;
+    showTorso: boolean;
+    torsoOpacity: number;
+    showVolume: boolean;
+    volumeOpacity: number;
+    showProbe: boolean;
+    showSlicePlane: boolean;
+    showGuidance: boolean;
+    showAdvancedControls: boolean;
+}
+
+// Volume Alignment - Affine Registration
+export interface AffineTransform {
+    matrix: number[][]; // 4x4 transformation matrix
+    caseId: string;
+    templateId: string;
+    timestamp: number;
+}
+
+export interface VolumeAlignment {
+    caseId: string;
+    affineTransform: AffineTransform;
+    spacing: [number, number, number]; // normalized spacing (typically 1mm³)
+    canonicalBounds: BoundingBox3D;
+}
+
+// Probe Physics
+export interface SurfaceContact {
+    contactPoint: [number, number, number];
+    contactNormal: [number, number, number];
+    isInContact: boolean;
+    penetrationDepth: number; // mm
+    pressureLevel: number; // 0-1 normalized
+}
+
+export interface ProbePhysics {
+    surfaceContact: SurfaceContact;
+    constrainedMovement: boolean;
+    maxTiltAngle: number; // degrees
+    maxPressure: number; // mm
+    surfaceFollowing: boolean; // probe aligns to curvature
+}
+
 export interface SessionConfig {
     mode: TrainingMode;
     caseId: string;
     probeType: ProbeType;
     targetOrgans: string[];
     difficulty: Difficulty;
+    visualizationMode: VisualizationMode;
+    enableProbePhysics: boolean;
     sessionLabel?: string;
 }
 
@@ -105,6 +188,7 @@ export interface ImagingSettings {
     dynamicRange: number; // 30-90dB
     windowLevel: number;  // HU center
     windowWidth: number;  // HU width
+    probeType?: ProbeType;
 }
 
 // Backend rendering settings

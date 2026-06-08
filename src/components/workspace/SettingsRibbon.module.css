@@ -1,0 +1,150 @@
+.ribbon {
+    display: flex;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 12px 20px;
+    gap: 24px;
+    margin-bottom: 12px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sectionTitle {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 1px;
+}
+
+.controlGroup {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.control {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.control label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.selectWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 4px 24px 4px 8px;
+    min-width: 90px;
+    transition: all 0.2s;
+}
+
+.selectWrapper:hover {
+    background: rgba(51, 65, 85, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.selectWrapper select {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 12px;
+    font-weight: 500;
+    width: 100%;
+    cursor: pointer;
+    outline: none;
+}
+
+.statusDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.chevron {
+    position: absolute;
+    right: 8px;
+    color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+}
+
+.divider {
+    width: 1px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tgcBar {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 20px;
+    padding: 2px 6px;
+    background: rgba(30, 41, 59, 0.8);
+    border-radius: 4px;
+    min-width: 80px;
+}
+
+.tgcLevel {
+    flex: 1;
+    background: #3b82f6;
+    border-radius: 1px;
+    opacity: 0.8;
+}
+
+.presetsBtn {
+    background: rgba(51, 65, 85, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: white;
+    font-size: 11px;
+    padding: 6px 12px;
+    cursor: pointer;
+    margin-top: 14px;
+}
+
+.presetsBtn:hover {
+    background: rgba(71, 85, 105, 0.8);
+}
+
+.actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.actionBtn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.actionBtn:hover {
+    background: #3b82f6;
+    border-color: #60a5fa;
+}

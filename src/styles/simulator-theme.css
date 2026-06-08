@@ -1,0 +1,353 @@
+/**
+ * Simulator Theme CSS
+ * ─────────────────────
+ * Professional medical ultrasound simulator color scheme
+ * Dark radiology workstation aesthetic
+ */
+
+:root {
+    /* ─── Medical Simulator Palette ─────────────────────────────── */
+    
+    /* Backgrounds - Dark medical workstation style */
+    --sim-bg-primary: #0a0e27;           /* Deep navy black */
+    --sim-bg-secondary: #131829;         /* Slightly lighter navy */
+    --sim-bg-tertiary: #1a2847;          /* Deep blue-navy */
+    --sim-bg-panel: rgba(19, 24, 41, 0.7);  /* Translucent panel */
+    --sim-bg-hover: rgba(51, 66, 102, 0.4); /* Subtle hover overlay */
+    
+    /* Surfaces - Clinical UI surfaces */
+    --sim-surface-primary: #1a2847;      /* Main surface */
+    --sim-surface-secondary: #243555;    /* Secondary surface */
+    --sim-surface-tertiary: #2d4466;     /* Tertiary surface */
+    --sim-surface-elevated: rgba(45, 68, 102, 0.95); /* Modal/elevated */
+    
+    /* Borders - Subtle medical UI borders */
+    --sim-border-light: rgba(100, 150, 200, 0.2);
+    --sim-border-medium: rgba(100, 150, 200, 0.4);
+    --sim-border-strong: rgba(100, 150, 200, 0.6);
+    
+    /* Text - Radiology workstation readability */
+    --sim-text-primary: #e8f0ff;         /* High contrast light blue-white */
+    --sim-text-secondary: #a8c5e0;       /* Secondary text */
+    --sim-text-tertiary: #6b8db5;        /* Tertiary/hint text */
+    --sim-text-muted: #4a5f7f;           /* Muted text */
+    
+    /* Accent Colors - Medical context indicators */
+    --sim-accent-success: #4ade80;       /* Medical green - optimal */
+    --sim-accent-warning: #facc15;       /* Medical yellow - caution */
+    --sim-accent-danger: #ef4444;        /* Medical red - critical */
+    --sim-accent-info: #60a5fa;          /* Medical blue - information */
+    --sim-accent-neutral: #9ca3af;       /* Neutral gray */
+    
+    /* Ultrasound specific */
+    --sim-ultrasound-beam: rgba(96, 165, 250, 0.3); /* Beam visualization */
+    --sim-ultrasound-artifact: rgba(239, 68, 68, 0.1); /* Artifact highlight */
+    --sim-contact-optimal: #4ade80;      /* Green - good contact */
+    --sim-contact-weak: #facc15;         /* Yellow - weak contact */
+    --sim-contact-excess: #ef4444;       /* Red - too much pressure */
+    
+    /* Probe interaction */
+    --sim-probe-primary: #3b82f6;        /* Probe color */
+    --sim-probe-highlight: #60a5fa;      /* Probe highlight */
+    --sim-probe-shadow: rgba(0, 0, 0, 0.4);
+    
+    /* Guidance & Coaching */
+    --sim-guidance-primary: #6366f1;     /* Guidance overlay purple */
+    --sim-guidance-highlight: #a78bfa;   /* Guidance highlight */
+    
+    /* Glass morphism effects */
+    --sim-glass-bg: rgba(19, 24, 41, 0.6);
+    --sim-glass-border: rgba(100, 150, 200, 0.1);
+    --sim-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    
+    /* ─── Spacing ───────────────────────────────────────────────── */
+    --sim-spacing-xs: 4px;
+    --sim-spacing-sm: 8px;
+    --sim-spacing-md: 12px;
+    --sim-spacing-lg: 16px;
+    --sim-spacing-xl: 24px;
+    --sim-spacing-2xl: 32px;
+    
+    /* ─── Typography ────────────────────────────────────────────── */
+    --sim-font-family: 'Segoe UI', 'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --sim-font-mono: 'Fira Code', 'Courier New', monospace;
+    
+    --sim-font-size-xs: 12px;
+    --sim-font-size-sm: 13px;
+    --sim-font-size-base: 14px;
+    --sim-font-size-md: 15px;
+    --sim-font-size-lg: 16px;
+    --sim-font-size-xl: 18px;
+    --sim-font-size-2xl: 20px;
+    --sim-font-size-3xl: 24px;
+    
+    --sim-font-weight-light: 300;
+    --sim-font-weight-normal: 400;
+    --sim-font-weight-medium: 500;
+    --sim-font-weight-semibold: 600;
+    --sim-font-weight-bold: 700;
+    
+    /* ─── Transitions & Animations ─────────────────────────────── */
+    --sim-transition-fast: 150ms ease-out;
+    --sim-transition-normal: 250ms ease-out;
+    --sim-transition-slow: 350ms ease-out;
+    
+    /* ─── Shadows ───────────────────────────────────────────────── */
+    --sim-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --sim-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --sim-shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.5);
+    --sim-shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.6);
+    
+    /* ─── Border Radius ─────────────────────────────────────────── */
+    --sim-radius-sm: 4px;
+    --sim-radius-md: 8px;
+    --sim-radius-lg: 12px;
+    --sim-radius-xl: 16px;
+    --sim-radius-2xl: 20px;
+    --sim-radius-full: 9999px;
+    
+    /* ─── Z-index Scale ─────────────────────────────────────────── */
+    --sim-z-base: 0;
+    --sim-z-dropdown: 100;
+    --sim-z-sticky: 200;
+    --sim-z-overlay: 300;
+    --sim-z-modal: 400;
+    --sim-z-tooltip: 500;
+    --sim-z-notification: 600;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --sim-bg-primary: #050812;
+        --sim-bg-secondary: #0f131f;
+        --sim-text-primary: #f0f4ff;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Base Element Styles using Simulator Theme
+   ───────────────────────────────────────────────────────────────────── */
+
+body {
+    background-color: var(--sim-bg-primary);
+    color: var(--sim-text-primary);
+    font-family: var(--sim-font-family);
+    font-size: var(--sim-font-size-base);
+}
+
+/* ─── Glass Morphism Mixin ─────────────────────────────────────────── */
+.sim-glass {
+    background: var(--sim-glass-bg);
+    border: 1px solid var(--sim-glass-border);
+    backdrop-filter: blur(8px);
+    box-shadow: var(--sim-glass-shadow);
+}
+
+/* ─── Medical UI Panel ──────────────────────────────────────────────── */
+.sim-panel {
+    background-color: var(--sim-surface-primary);
+    border: 1px solid var(--sim-border-light);
+    border-radius: var(--sim-radius-lg);
+    padding: var(--sim-spacing-lg);
+    transition: all var(--sim-transition-normal);
+}
+
+.sim-panel:hover {
+    background-color: var(--sim-surface-secondary);
+    border-color: var(--sim-border-medium);
+    box-shadow: var(--sim-shadow-md);
+}
+
+/* ─── Medical UI Card ──────────────────────────────────────────────── */
+.sim-card {
+    background: var(--sim-surface-primary);
+    border: 1px solid var(--sim-border-light);
+    border-radius: var(--sim-radius-md);
+    padding: var(--sim-spacing-md);
+    transition: all var(--sim-transition-normal);
+}
+
+.sim-card.elevated {
+    background: var(--sim-surface-secondary);
+    border-color: var(--sim-border-medium);
+    box-shadow: var(--sim-shadow-md);
+}
+
+/* ─── Interactive Elements ────────────────────────────────────────── */
+.sim-button {
+    padding: var(--sim-spacing-sm) var(--sim-spacing-md);
+    background-color: var(--sim-surface-secondary);
+    color: var(--sim-text-primary);
+    border: 1px solid var(--sim-border-medium);
+    border-radius: var(--sim-radius-md);
+    font-size: var(--sim-font-size-base);
+    font-weight: var(--sim-font-weight-medium);
+    cursor: pointer;
+    transition: all var(--sim-transition-fast);
+    
+    display: flex;
+    align-items: center;
+    gap: var(--sim-spacing-sm);
+    white-space: nowrap;
+}
+
+.sim-button:hover:not(:disabled) {
+    background-color: var(--sim-surface-tertiary);
+    border-color: var(--sim-border-strong);
+    box-shadow: var(--sim-shadow-sm);
+    transform: translateY(-1px);
+}
+
+.sim-button:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.sim-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.sim-button.primary {
+    background-color: var(--sim-accent-info);
+    color: var(--sim-bg-primary);
+    border-color: var(--sim-accent-info);
+}
+
+.sim-button.primary:hover:not(:disabled) {
+    background-color: #3b82f6;
+    filter: brightness(1.1);
+}
+
+.sim-button.success {
+    background-color: var(--sim-accent-success);
+    color: var(--sim-bg-primary);
+    border-color: var(--sim-accent-success);
+}
+
+.sim-button.warning {
+    background-color: var(--sim-accent-warning);
+    color: var(--sim-bg-primary);
+    border-color: var(--sim-accent-warning);
+}
+
+.sim-button.danger {
+    background-color: var(--sim-accent-danger);
+    color: white;
+    border-color: var(--sim-accent-danger);
+}
+
+/* ─── Input Elements ────────────────────────────────────────────────── */
+.sim-input,
+.sim-select {
+    padding: var(--sim-spacing-sm) var(--sim-spacing-md);
+    background-color: var(--sim-surface-secondary);
+    color: var(--sim-text-primary);
+    border: 1px solid var(--sim-border-medium);
+    border-radius: var(--sim-radius-md);
+    font-family: var(--sim-font-family);
+    font-size: var(--sim-font-size-base);
+    transition: all var(--sim-transition-fast);
+}
+
+.sim-input:focus,
+.sim-select:focus {
+    outline: none;
+    border-color: var(--sim-accent-info);
+    background-color: var(--sim-surface-tertiary);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+/* ─── Sliders & Controls ────────────────────────────────────────────── */
+.sim-slider {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--sim-surface-secondary), var(--sim-surface-tertiary));
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.sim-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--sim-accent-info);
+    cursor: pointer;
+    box-shadow: var(--sim-shadow-md);
+    transition: all var(--sim-transition-fast);
+}
+
+.sim-slider::-webkit-slider-thumb:hover {
+    background: #60a5fa;
+    box-shadow: 0 0 12px rgba(96, 165, 250, 0.6);
+}
+
+.sim-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--sim-accent-info);
+    border: none;
+    cursor: pointer;
+    box-shadow: var(--sim-shadow-md);
+    transition: all var(--sim-transition-fast);
+}
+
+.sim-slider::-moz-range-thumb:hover {
+    background: #60a5fa;
+    box-shadow: 0 0 12px rgba(96, 165, 250, 0.6);
+}
+
+/* ─── Status Indicators ────────────────────────────────────────────── */
+.sim-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sim-spacing-sm);
+    padding: var(--sim-spacing-sm) var(--sim-spacing-md);
+    border-radius: var(--sim-radius-md);
+    font-size: var(--sim-font-size-sm);
+    font-weight: var(--sim-font-weight-medium);
+}
+
+.sim-status.success {
+    background-color: rgba(74, 222, 128, 0.1);
+    color: var(--sim-accent-success);
+    border: 1px solid var(--sim-accent-success);
+}
+
+.sim-status.warning {
+    background-color: rgba(250, 204, 21, 0.1);
+    color: var(--sim-accent-warning);
+    border: 1px solid var(--sim-accent-warning);
+}
+
+.sim-status.danger {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--sim-accent-danger);
+    border: 1px solid var(--sim-accent-danger);
+}
+
+.sim-status.info {
+    background-color: rgba(96, 165, 250, 0.1);
+    color: var(--sim-accent-info);
+    border: 1px solid var(--sim-accent-info);
+}
+
+/* ─── Badges ────────────────────────────────────────────────────────── */
+.sim-badge {
+    display: inline-block;
+    padding: 2px var(--sim-spacing-sm);
+    background-color: var(--sim-surface-secondary);
+    color: var(--sim-text-secondary);
+    border: 1px solid var(--sim-border-light);
+    border-radius: var(--sim-radius-full);
+    font-size: var(--sim-font-size-xs);
+    font-weight: var(--sim-font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
