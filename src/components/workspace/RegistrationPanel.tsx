@@ -63,20 +63,35 @@ export const RegistrationPanel: React.FC = () => {
 
     const handleSave = () => {
         if (selectedCaseId) {
+            // Ensure torso remains visible with current parameters after saving
+            setTorsoSettings({
+                opacity: torsoSettings.opacity,
+                wireframe: torsoSettings.wireframe,
+                ctVisible: true,
+                torsoBoundingBoxVisible: torsoSettings.torsoBoundingBoxVisible,
+                ctBoundingBoxVisible: torsoSettings.ctBoundingBoxVisible
+            });
             saveRegistration(selectedCaseId);
         }
     };
 
     const handleReset = () => {
-        setRegistration({ position: [0, 0, 0], rotation: [0, 0, 0], scale: 1 });
+        // For Volume 35 (test35), reset to the corrected anatomy alignment
+        const isVolume35 = selectedCaseId === 'test35';
+        setRegistration(isVolume35 
+            ? { position: [0, 0, 0], rotation: [180, 0, 0], scale: 1 }
+            : { position: [0, 0, 0], rotation: [0, 0, 0], scale: 1 }
+        );
     };
 
     // Quick rotation presets for common orientation corrections
+    const isVolume35 = selectedCaseId === 'test35';
     const rotPresets = [
         { label: '0°', rot: [0, 0, 0] },
         { label: '90° X', rot: [90, 0, 0] },
         { label: '90° Y', rot: [0, 90, 0] },
         { label: '180° Y', rot: [0, 180, 0] },
+        ...(isVolume35 ? [{ label: '180° X (Vol35)', rot: [180, 0, 0] }] : []),
     ];
 
     if (collapsed) {

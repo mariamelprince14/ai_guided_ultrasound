@@ -1,0 +1,445 @@
+/**
+ * Volume35SimulatorLayout.module.css
+ * Professional medical simulation layout — Volume 35
+ */
+
+:root {
+    --bg-primary:    #020617;
+    --bg-surface:    #0f172a;
+    --bg-elevated:   #1e293b;
+    --border:        rgba(255, 255, 255, 0.07);
+    --border-accent: rgba(59, 130, 246, 0.25);
+    --text-primary:  #f8fafc;
+    --text-secondary:#94a3b8;
+    --text-muted:    #475569;
+    --mode-beginner: #22c55e;
+    --mode-intermediate: #3b82f6;
+    --mode-advanced: #64748b;
+}
+
+/* ── Root Container ──────────────────────────────────────────────────────── */
+.simulatorContainer {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+}
+
+/* ── Simulator Body (below top bar) ─────────────────────────────────────── */
+.simulatorBody {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* ── Professional Top Bar ────────────────────────────────────────────────── */
+.professionalTopBar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    height: 48px;
+    flex-shrink: 0;
+    background: #060e1f;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 0 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.professionalTopBar::-webkit-scrollbar { display: none; }
+
+.topBarBrand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.topBarLogo {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0;
+}
+.topBarTitle {
+    font-size: 12px;
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: 0.3px;
+}
+.topBarSub {
+    font-size: 9px;
+    color: #475569;
+    margin-top: 1px;
+}
+
+.topBarDivider {
+    width: 1px;
+    height: 28px;
+    background: rgba(255,255,255,0.07);
+    margin: 0 12px;
+    flex-shrink: 0;
+}
+
+.topBarGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex-shrink: 0;
+}
+.topBarLabel {
+    font-size: 7.5px;
+    font-weight: 800;
+    color: #334155;
+    letter-spacing: 1px;
+}
+.topBarTimer {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f1f5f9;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+.topBarConnDot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    transition: background 0.3s ease;
+}
+.topBarParamRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.topBarParam {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.topBarParamLabel {
+    font-size: 8px;
+    font-weight: 800;
+    color: #334155;
+    letter-spacing: 0.5px;
+    margin-right: 1px;
+}
+.topBarContactDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+.topBarModes {
+    display: flex;
+    gap: 4px;
+}
+.topBarModeBtn {
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: transparent;
+    color: #475569;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.topBarModeBtn:hover { background: rgba(255,255,255,0.04); color: #94a3b8; }
+.topBarModeBtnActive {
+    background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.35);
+    color: #3b82f6;
+}
+
+/* Action Buttons in top bar */
+.topBarActions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.topBarActionBtn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.topBarActionBtn:hover {
+    background: rgba(255,255,255,0.07);
+    color: #94a3b8;
+    border-color: rgba(255,255,255,0.14);
+}
+.topBarActionBtnActive {
+    background: rgba(59,130,246,0.15);
+    border-color: rgba(59,130,246,0.4);
+    color: #60a5fa;
+}
+.topBarActionBtnGreen {
+    background: rgba(34,197,94,0.1);
+    border-color: rgba(34,197,94,0.35);
+    color: #22c55e;
+}
+.topBarEndBtn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(239,68,68,0.35);
+    background: rgba(239,68,68,0.1);
+    color: #f87171;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.topBarEndBtn:hover { background: rgba(239,68,68,0.2); }
+
+/* ── Center Workspace ────────────────────────────────────────────────────── */
+.centerWorkspace {
+    flex: 1;
+    position: relative;
+    background: radial-gradient(ellipse at 50% 40%, #0d1b36 0%, #020617 80%);
+    border-right: 1px solid var(--border);
+    min-width: 0;
+}
+.viewerContainer {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* ── Floating Left Sidebar ───────────────────────────────────────────────── */
+.leftSidebar {
+    position: absolute;
+    left: 16px;
+    top: 16px;
+    bottom: 16px;
+    width: 264px;
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: auto;
+}
+.leftSidebar.collapsed {
+    transform: translateX(-300px);
+    opacity: 0;
+    pointer-events: none;
+}
+.sidebarToggle {
+    position: absolute;
+    left: 16px;
+    top: 16px;
+    width: 40px;
+    height: 40px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--mode-intermediate);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.2s ease;
+}
+.sidebarToggle:hover { background: rgba(30, 41, 59, 0.95); border-color: var(--mode-intermediate); }
+
+/* ── Glass Panel Shell ───────────────────────────────────────────────────── */
+.glassPanel {
+    flex: 1;
+    background: rgba(10, 18, 35, 0.88);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+/* ── Tab Navigation ──────────────────────────────────────────────────────── */
+.tabNav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.tabBtn {
+    padding: 11px 0;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+.tabBtn:hover { color: var(--text-secondary); background: rgba(255,255,255,0.02); }
+.tabBtn.activeTab { color: var(--text-primary); }
+.tabBtn.activeTab::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 16%;
+    right: 16%;
+    height: 2px;
+    background: var(--mode-intermediate);
+    border-radius: 2px 2px 0 0;
+}
+.tabContent {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+/* ── Guidance Content ─────────────────────────────────────────────────────── */
+.guidanceTitle { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px; }
+.guidanceStep { display: flex; gap: 10px; margin-bottom: 12px; font-size: 12px; line-height: 1.55; color: var(--text-secondary); }
+.stepNum { font-size: 10px; font-weight: 800; min-width: 20px; padding-top: 2px; flex-shrink: 0; }
+.tipBox { margin-top: 16px; padding: 12px 14px; background: rgba(59, 130, 246, 0.07); border-left: 2px solid var(--mode-intermediate); border-radius: 4px; }
+.tipLabel { font-size: 9px; font-weight: 800; letter-spacing: 1px; margin-bottom: 5px; }
+.tipText { font-size: 11px; font-style: italic; color: var(--text-muted); line-height: 1.45; }
+
+/* ── Session Tab ─────────────────────────────────────────────────────────── */
+.sessionSection { margin-bottom: 20px; }
+.sessionLabel { font-size: 9px; font-weight: 800; color: var(--text-muted); letter-spacing: 1.2px; margin-bottom: 10px; }
+.modeGrid { display: flex; flex-direction: column; gap: 6px; }
+.modeBtn { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; text-align: left; transition: all 0.2s ease; display: flex; justify-content: space-between; align-items: center; }
+.modeBtn:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
+.modeBtn.modeBtnActive { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.4); color: var(--text-primary); }
+.modeIndicator { width: 7px; height: 7px; border-radius: 50%; }
+.probeGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.probeBtn { padding: 10px 8px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s ease; }
+.probeBtn:hover { background: rgba(255,255,255,0.06); }
+.probeBtn.probeBtnActive { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.4); color: var(--text-primary); }
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+/* ── Probe Tab ───────────────────────────────────────────────────────────── */
+.probeMetric { margin-bottom: 14px; }
+.probeMetricLabel { font-size: 10px; color: var(--text-muted); margin-bottom: 5px; }
+.probeMetricValue { font-size: 20px; font-weight: 700; color: var(--text-primary); font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+.probeMetricUnit { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+.contactBadge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 100px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; }
+.contactActive { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.4); color: #22c55e; }
+.contactInactive { background: rgba(100,116,139,0.1); border: 1px solid rgba(100,116,139,0.25); color: var(--text-muted); }
+
+/* ── Right Panel ─────────────────────────────────────────────────────────── */
+.rightPanel {
+    width: 400px;
+    flex-shrink: 0;
+    background: #000;
+    border-left: 3px solid #111827;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -8px 0 24px rgba(0,0,0,0.6);
+}
+
+/* ── Ultrasound Monitor ─────────────────────────────────────────────────── */
+.ultrasoundMonitor { flex: 1; display: flex; flex-direction: column; background: #000; overflow: hidden; position: relative; }
+.monitorHeader { padding: 10px 16px; background: #080f1e; border-bottom: 1px solid #0f172a; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.systemName { color: #4ade80; font-size: 10px; font-weight: 800; letter-spacing: 2px; }
+.monitorTimestamp { color: var(--text-muted); font-size: 10px; font-family: monospace; }
+.displayArea { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 45%, #0c1420 0%, #000 100%); overflow: hidden; }
+.ultrasoundImage { max-width: 100%; max-height: 100%; object-fit: contain; filter: contrast(1.08) brightness(1.05); }
+.noSignalOverlay { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #1e293b; }
+.noSignalText { font-size: 11px; font-weight: 700; letter-spacing: 2px; }
+.noSignalSub { font-size: 10px; letter-spacing: 1px; opacity: 0.7; }
+.scanlines { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.013) 2px, rgba(255,255,255,0.013) 4px); pointer-events: none; animation: scanlineMove 4s linear infinite; }
+@keyframes scanlineMove { 0% { background-position: 0 0; } 100% { background-position: 0 80px; } }
+.imageOverlay { position: absolute; top: 10px; left: 12px; color: #4ade80; font-size: 10px; font-weight: 700; font-family: monospace; letter-spacing: 0.5px; line-height: 1.6; }
+.depthRuler { position: absolute; right: 10px; top: 16px; bottom: 16px; width: 14px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
+.depthTick { display: flex; align-items: center; gap: 3px; }
+.depthTickLine { width: 6px; height: 1px; background: rgba(255,255,255,0.3); }
+.depthTickLabel { font-size: 9px; color: rgba(255,255,255,0.35); font-family: monospace; width: 20px; text-align: right; }
+.settingsBar { padding: 12px 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; border-top: 1px solid #0f172a; background: #060d1a; flex-shrink: 0; }
+.settingItem { display: flex; flex-direction: column; gap: 3px; }
+.settingLabel { font-size: 8px; color: var(--text-muted); font-weight: 800; letter-spacing: 1px; }
+.settingValue { font-size: 15px; color: var(--text-primary); font-weight: 600; font-family: 'JetBrains Mono', 'Courier New', monospace; }
+
+/* ── Metrics Panel ───────────────────────────────────────────────────────── */
+.metricsPanel { padding: 14px 16px; background: #060d1a; border-top: 1px solid #0f172a; flex-shrink: 0; }
+.metricsPanelHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.metricsPanelTitle { font-size: 9px; font-weight: 800; color: var(--text-muted); letter-spacing: 1.2px; }
+.metricsTime { font-size: 13px; font-weight: 700; color: var(--text-primary); font-family: monospace; }
+.metricItem { margin-bottom: 10px; }
+.metricHeader { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-bottom: 5px; }
+.progressBar { height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
+.progressFill { height: 100%; border-radius: 2px; transition: width 0.5s ease, background-color 0.3s ease; }
+
+/* ── Session End Modal ───────────────────────────────────────────────────── */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+.modalCard {
+    background: #0f172a;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 32px;
+    width: 480px;
+    max-width: 95vw;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+.modalHeader { margin-bottom: 20px; }
+.modalTitle { font-size: 22px; font-weight: 700; color: #f1f5f9; }
+.modalSub { font-size: 12px; color: #475569; margin-top: 4px; }
+.modalGrade { font-size: 36px; font-weight: 800; text-align: center; margin: 20px 0; }
+.modalMetrics { background: rgba(255,255,255,0.03); border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+.modalMetricRow { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.modalMetricRow:last-child { border-bottom: none; }
+.modalMetricLabel { font-size: 12px; color: #475569; }
+.modalMetricValue { font-size: 12px; font-weight: 700; color: #f1f5f9; font-family: monospace; }
+.modalSuggestions { margin-bottom: 24px; }
+.modalSugTitle { font-size: 10px; font-weight: 800; color: #3b82f6; letter-spacing: 1px; margin-bottom: 8px; }
+.modalSugItem { font-size: 11px; color: #475569; line-height: 1.6; margin-bottom: 3px; }
+.modalActions { display: flex; gap: 10px; justify-content: flex-end; }
+.modalBtnPrimary { padding: 10px 24px; border-radius: 8px; border: none; background: #3b82f6; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+.modalBtnPrimary:hover { background: #2563eb; }
+.modalBtnSecondary { padding: 10px 24px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: #94a3b8; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.modalBtnSecondary:hover { background: rgba(255,255,255,0.08); color: #f1f5f9; }
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

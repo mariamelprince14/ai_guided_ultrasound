@@ -1,0 +1,72 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: #020617;
+    overflow: hidden;
+}
+
+.body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    padding: 8px;
+    gap: 8px;
+}
+
+.centerArea {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.viewportWrapper {
+    flex: 1;
+    position: relative;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.rightPanel {
+    width: 420px;
+    min-width: 420px;
+    display: flex;
+    flex-direction: column;
+}
+
+.rightPanelInner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 8px;
+}
+
+.ultrasoundMonitor {
+    flex: 1.2;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.coachingArea {
+    flex: 0.8;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.bottomBar {
+    height: 48px;
+    background: #0f172a;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+}

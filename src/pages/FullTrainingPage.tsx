@@ -6,18 +6,24 @@
  *   2. Calls POST /api/session/create to load the CT volume
  *   3. Opens WebSocket to /ws/{sessionId}
  *   4. Forwards probe updates → WS → receives ultrasound frames
+ *
+ * Layout:
+ *   CENTER → VolumeViewer (3D torso + probe + anatomy)
+ *   RIGHT  → UltrasoundViewer (live imaging monitor) + AICoachingPanel
+ *   BOTTOM → SessionMetricsDisplay
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@store/useAppStore';
 import { apiService } from '@services/api';
 import { wsService } from '@services/websocket';
-import { WorkspaceLayout } from '@components/workspace/WorkspaceLayout';
-import { ProbeControls } from '@components/workspace/ProbeControls';
+import { SimulatorLayout } from '@components/workspace/SimulatorLayout';
+import { UltrasoundViewer } from '@components/workspace/UltrasoundViewer';
 import { VolumeViewer } from '@components/workspace/VolumeViewer';
-import { RightPanel } from '@components/workspace/RightPanel';
 import { CaseSelector } from '@components/workspace/CaseSelector';
+import { SessionMetricsDisplay } from '@components/workspace/SessionMetricsDisplay';
 import type { WSMessage } from '@/types';
 import styles from './TrainingPage.module.css';
+import '@styles/simulator-theme.css';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error' | 'setup';
 
@@ -30,18 +36,18 @@ export const FullTrainingPage: React.FC = () => {
         setConnectionStatus,
         updateFrame,
         setVolumeInfo,
-        volumeInfo,
         resetSession,
         fetchVolumeData,
         setProbePos,
         setProbeRot,
         updatePose,
+        loadVolumeAlignment,
+        visualizationSettings,
     } = useAppStore();
 
     const [loadState, setLoadState] = useState<LoadState>('idle');
     const [isSwitching, setIsSwitching] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
-    const [captureCount, setCaptureCount] = useState(0);
 
     // ── WebSocket message handler ───────────────────────────────────────────
     useEffect(() => {
@@ -56,7 +62,6 @@ export const FullTrainingPage: React.FC = () => {
                     if (message.data.event === 'stopped') setSessionStatus('ended');
                     break;
                 case 'captureResult':
-                    if (message.data.success) setCaptureCount(n => n + 1);
                     break;
             }
         });
@@ -96,6 +101,8 @@ export const FullTrainingPage: React.FC = () => {
                 probeType: 'curvilinear',
                 targetOrgans: [],
                 difficulty: 'beginner',
+                visualizationMode: visualizationSettings.mode,
+                enableProbePhysics: true,
             });
 
             // 3. Update state
@@ -103,13 +110,18 @@ export const FullTrainingPage: React.FC = () => {
             setVolumeInfo(res.volumeInfo);
             setSelectedCaseId(idToLoad);
             
-            // Initialize probe at the center of the new volume
-            const initialPos = {
+            // Initialize probe — for Volume35 start at right kidney anterior surface zone
+            const isVol35 = idToLoad === 'test35';
+            const initialPos = isVol35 ? {
+                x: res.volumeInfo.bounds.center[0] + 60,  // right side (+X)
+                y: res.volumeInfo.bounds.center[1],       // mid-height (kidney level)
+                z: res.volumeInfo.bounds.center[2] + 80,  // anterior surface (+Z)
+            } : {
                 x: res.volumeInfo.bounds.center[0],
                 y: res.volumeInfo.bounds.center[1],
                 z: res.volumeInfo.bounds.center[2],
             };
-            const initialRot = { pitch: 20, yaw: 0, roll: 0 }; 
+            const initialRot = { pitch: 15, yaw: 0, roll: 0 };
             
             setProbePos(initialPos);
             setProbeRot(initialRot);
@@ -117,6 +129,7 @@ export const FullTrainingPage: React.FC = () => {
 
             setSessionStatus('running');
             fetchVolumeData(idToLoad);
+            loadVolumeAlignment(idToLoad);
 
             // 4. Connect WebSocket
             wsService.connect(res.sessionId);
@@ -129,7 +142,7 @@ export const FullTrainingPage: React.FC = () => {
         } finally {
             setIsSwitching(false);
         }
-    }, [selectedCaseId, loadState, resetSession, setSessionId, setVolumeInfo, setSelectedCaseId, setSessionStatus, fetchVolumeData, setProbePos, setProbeRot, updatePose]);
+    }, [selectedCaseId, loadState, resetSession, setSessionId, setVolumeInfo, setSelectedCaseId, setSessionStatus, fetchVolumeData, setProbePos, setProbeRot, updatePose, loadVolumeAlignment, visualizationSettings.mode]);
 
     // ── Cleanup on unmount ──────────────────────────────────────────────────
     useEffect(() => {
@@ -194,42 +207,6 @@ export const FullTrainingPage: React.FC = () => {
     }
 
     // ── Render: training workspace ───────────────────────────────────────────
-    const renderHeader = () => (
-        <div className={styles.workspaceHeader}>
-            <div className={styles.headerLeft}>
-                <div className={styles.caseTag}>
-                    <span className={styles.caseIcon}>🩻</span>
-                    <CaseSelector
-                        className={styles.compactSelector}
-                        onSelect={(id) => handleLoadCase(id)}
-                    />
-                    {volumeInfo?.hasSegmentation && (
-                        <span className={styles.segBadge}>SEG</span>
-                    )}
-                </div>
-                <div className={styles.volumeMeta}>
-                    {volumeInfo && (
-                        <>
-                            <span className={styles.metaVal}>{volumeInfo.shape.join(' × ')} vox</span>
-                            <span className={styles.metaDivider}>·</span>
-                            <span className={styles.metaVal}>
-                                {volumeInfo.voxelSpacing.map(v => v.toFixed(1)).join('×')} mm
-                            </span>
-                        </>
-                    )}
-                </div>
-            </div>
-            <div className={styles.headerRight}>
-                <div className={styles.captureCount}>
-                    📷 <strong>{captureCount}</strong> captures
-                </div>
-                <div className={styles.caseLabel}>
-                    Active Case: <span>{selectedCaseId}</span>
-                </div>
-            </div>
-        </div>
-    );
-
     return (
         <div className={`${styles.trainingPage} ${isSwitching ? styles.isSwitching : ''}`}>
             {isSwitching && (
@@ -240,15 +217,17 @@ export const FullTrainingPage: React.FC = () => {
                     </div>
                 </div>
             )}
-            <WorkspaceLayout
-                header={renderHeader()}
-                leftPanel={<ProbeControls />}
-                centerPanel={
-                    <div className={styles.viewerContainer}>
-                        <VolumeViewer />
-                    </div>
+
+            <SimulatorLayout
+                viewport={
+                    /* CENTER: Large immersive 3D simulation */
+                    <VolumeViewer />
                 }
-                rightPanel={<RightPanel />}
+                rightPanel={
+                    /* RIGHT: Live ultrasound imaging monitor */
+                    <UltrasoundViewer />
+                }
+                bottomBar={<SessionMetricsDisplay />}
             />
         </div>
     );

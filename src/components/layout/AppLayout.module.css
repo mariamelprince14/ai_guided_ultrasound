@@ -20,3 +20,17 @@
     display: flex;
     flex-direction: column;
 }
+
+.fullScreenLayout {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #020617;
+}
+
+.fullScreenContent {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}

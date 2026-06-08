@@ -9,6 +9,7 @@ import { IdentificationPage } from '@pages/IdentificationPage';
 import { ProgressResults } from '@pages/ProgressResults';
 import { SystemStatus } from '@pages/SystemStatus';
 import { Help } from '@pages/Help';
+import { RegistrationPage } from '@pages/RegistrationPage';
 import '@styles/global.css';
 
 console.log('App.tsx rendering...')
@@ -29,6 +30,7 @@ function App() {
           <Route path="/results" element={<ProgressResults />} />
           <Route path="/status" element={<SystemStatus />} />
           <Route path="/help" element={<Help />} />
+          <Route path="/registration" element={<RegistrationPage />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>

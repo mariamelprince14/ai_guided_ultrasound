@@ -1,0 +1,246 @@
+@import '@styles/simulator-theme.css';
+
+.container {
+    position: fixed;
+    top: 80px;
+    right: 32px;
+    width: 180px;
+    padding: var(--sim-spacing-lg);
+    background: var(--sim-surface-primary);
+    border: 2px solid var(--sim-border-medium);
+    border-radius: var(--sim-radius-xl);
+    box-shadow: var(--sim-shadow-lg);
+    z-index: var(--sim-z-overlay);
+    animation: slideInRight 400ms ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Contact Quality Variants */
+.container.optimal {
+    border-color: var(--sim-contact-optimal);
+    background: linear-gradient(
+        135deg,
+        rgba(74, 222, 128, 0.05) 0%,
+        var(--sim-surface-primary) 100%
+    );
+}
+
+.container.weak {
+    border-color: var(--sim-contact-weak);
+    background: linear-gradient(
+        135deg,
+        rgba(250, 204, 21, 0.05) 0%,
+        var(--sim-surface-primary) 100%
+    );
+}
+
+.container.excess {
+    border-color: var(--sim-contact-excess);
+    background: linear-gradient(
+        135deg,
+        rgba(239, 68, 68, 0.05) 0%,
+        var(--sim-surface-primary) 100%
+    );
+}
+
+.container.poor {
+    border-color: var(--sim-accent-neutral);
+    background: linear-gradient(
+        135deg,
+        rgba(156, 163, 175, 0.05) 0%,
+        var(--sim-surface-primary) 100%
+    );
+}
+
+/* Gauge */
+.gauge {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin: 0 auto var(--sim-spacing-md);
+}
+
+.gaugeSvg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+.gaugeBackground {
+    fill: none;
+    stroke: var(--sim-border-medium);
+    stroke-width: 2;
+    opacity: 0.5;
+}
+
+.pressureArc {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 8px currentColor);
+    transition: stroke 300ms ease-out;
+}
+
+.centerDot {
+    fill: var(--sim-accent-info);
+    filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.6));
+}
+
+/* Gauge Value */
+.gaugeValue {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.value {
+    font-size: var(--sim-font-size-2xl);
+    font-weight: var(--sim-font-weight-bold);
+    color: var(--sim-text-primary);
+}
+
+.unit {
+    font-size: var(--sim-font-size-xs);
+    color: var(--sim-text-tertiary);
+    font-weight: var(--sim-font-weight-medium);
+}
+
+/* Status Section */
+.status {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sim-spacing-md);
+}
+
+.statusIndicator {
+    display: flex;
+    align-items: center;
+    gap: var(--sim-spacing-sm);
+}
+
+.indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.statusLabel {
+    flex: 1;
+    color: var(--sim-text-primary);
+    font-size: var(--sim-font-size-sm);
+    font-weight: var(--sim-font-weight-semibold);
+}
+
+/* Quality Bar */
+.qualityBar {
+    height: 6px;
+    background-color: var(--sim-surface-secondary);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--sim-border-light);
+}
+
+.qualityFill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 200ms ease-out;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.4);
+}
+
+/* Hint Text */
+.hint {
+    font-size: var(--sim-font-size-xs);
+    color: var(--sim-text-secondary);
+    text-align: center;
+    line-height: 1.4;
+    padding: var(--sim-spacing-sm);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--sim-radius-md);
+    border-left: 2px solid currentColor;
+}
+
+/* Skin Deformation Visualization */
+.skinDeformation {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 40px;
+    perspective: 1000px;
+}
+
+.deformationArea {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        ellipse at center,
+        rgba(96, 165, 250, 0.4) 0%,
+        rgba(96, 165, 250, 0.1) 70%,
+        transparent 100%
+    );
+    border-radius: 50%;
+    transform-origin: center;
+    transition: all 200ms ease-out;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .container {
+        right: 16px;
+        top: 76px;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        position: fixed;
+        bottom: 100px;
+        right: 16px;
+        top: auto;
+        width: 160px;
+        padding: var(--sim-spacing-md);
+    }
+
+    .gauge {
+        width: 120px;
+        height: 120px;
+    }
+
+    .value {
+        font-size: var(--sim-font-size-xl);
+    }
+
+    .statusLabel {
+        font-size: var(--sim-font-size-xs);
+    }
+
+    .hint {
+        font-size: 11px;
+    }
+}

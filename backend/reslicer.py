@@ -52,6 +52,7 @@ def reslice(
     probe_matrix: np.ndarray,    # 4×4  probe pose in world (mm) coords
     plane_size_mm: tuple[float, float] = DEFAULT_PLANE_SIZE_MM,
     resolution: tuple[int, int] = DEFAULT_RESOLUTION,
+    pressure: float = 0.0,
 ) -> np.ndarray:
     """
     Extract a 2D CT slice at the given probe position/orientation.
@@ -65,6 +66,16 @@ def reslice(
     # u = horizontal axis, v = vertical axis of the image plane
     u = np.linspace(-plane_size_mm[0] / 2.0, plane_size_mm[0] / 2.0, out_w)
     v = np.linspace(-plane_size_mm[1] / 2.0, plane_size_mm[1] / 2.0, out_h)
+    
+    if pressure > 0.0:
+        # Compress superficial tissues (top of screen, v[0] to v[-1])
+        v_min, v_max = v[0], v[-1]
+        v_span = v_max - v_min
+        d_norm = (v - v_min) / v_span
+        exponent = 1.0 - 0.45 * pressure * np.exp(-d_norm / 0.25)
+        d_norm_warped = np.power(d_norm, exponent)
+        v = v_min + d_norm_warped * v_span
+
     uu, vv = np.meshgrid(u, v)     # both (out_h, out_w)
     n_pts = out_h * out_w
 
@@ -118,6 +129,7 @@ def reslice_segmentation(
     probe_matrix: np.ndarray,
     plane_size_mm: tuple[float, float] = DEFAULT_PLANE_SIZE_MM,
     resolution: tuple[int, int] = DEFAULT_RESOLUTION,
+    pressure: float = 0.0,
 ) -> np.ndarray:
     """
     Extract segmentation labels at the probe plane.
@@ -126,6 +138,16 @@ def reslice_segmentation(
     out_h, out_w = resolution
     u = np.linspace(-plane_size_mm[0] / 2.0, plane_size_mm[0] / 2.0, out_w)
     v = np.linspace(-plane_size_mm[1] / 2.0, plane_size_mm[1] / 2.0, out_h)
+    
+    if pressure > 0.0:
+        # Match the elastic compression deformation of reslice
+        v_min, v_max = v[0], v[-1]
+        v_span = v_max - v_min
+        d_norm = (v - v_min) / v_span
+        exponent = 1.0 - 0.45 * pressure * np.exp(-d_norm / 0.25)
+        d_norm_warped = np.power(d_norm, exponent)
+        v = v_min + d_norm_warped * v_span
+
     uu, vv = np.meshgrid(u, v)
     n_pts = out_h * out_w
 

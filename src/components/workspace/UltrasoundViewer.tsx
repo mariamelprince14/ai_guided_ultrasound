@@ -1,16 +1,18 @@
+/**
+ * UltrasoundViewer.tsx
+ * ─────────────────────
+ * Live ultrasound imaging monitor panel.
+ * Placed in the right panel of the workstation layout.
+ * Displays the real-time scan output from the backend renderer.
+ */
 import React, { useRef, useEffect } from 'react';
 import { useAppStore } from '@store/useAppStore';
-import { Badge } from '@components/ui/Badge';
-import { Button } from '@components/ui/Button';
 import { wsService } from '@services/websocket';
-import { getQualityLabel } from '@utils/formatters';
 import {
     Play,
     Pause,
     Camera,
     Target,
-    Layers,
-    ScanEye
 } from 'lucide-react';
 import styles from './UltrasoundViewer.module.css';
 
@@ -19,7 +21,7 @@ interface UltrasoundViewerProps {
 }
 
 export const UltrasoundViewer: React.FC<UltrasoundViewerProps> = ({ imageSrc }) => {
-    const { sessionId, status, setSessionStatus, currentFrame, currentFeedback, config } = useAppStore();
+    const { sessionId, status, setSessionStatus, currentFrame } = useAppStore();
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -34,7 +36,6 @@ export const UltrasoundViewer: React.FC<UltrasoundViewerProps> = ({ imageSrc }) 
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 };
-                // If it's a static src, use it directly. If it's a base64 frame, prepend prefix.
                 img.src = imageSrc ? imageSrc : `data:image/jpeg;base64,${frameToRender}`;
             }
         }
@@ -52,12 +53,28 @@ export const UltrasoundViewer: React.FC<UltrasoundViewerProps> = ({ imageSrc }) 
         }
     };
 
-    const qualityInfo = currentFeedback ? getQualityLabel(currentFeedback.qualityScore) : null;
-
     return (
         <div className={styles.container}>
+            {/* Monitor title strip */}
+            <div className={styles.monitorHeader}>
+                <span className={styles.monitorTitle}>ULTRASOUND MONITOR</span>
+                <span className={styles.monitorBadge}>
+                    ● LIVE
+                </span>
+            </div>
+
             {/* Ultrasound Display */}
             <div className={styles.viewport}>
+                {/* Ruler markings (left side) */}
+                <div className={styles.ruler}>
+                    {[0, 2, 4, 6, 8, 10].map(d => (
+                        <div key={d} className={styles.rulerMark}>
+                            <span>{d}</span>
+                            <div className={styles.tick} />
+                        </div>
+                    ))}
+                </div>
+
                 <canvas
                     ref={canvasRef}
                     className={styles.canvas}
@@ -65,88 +82,43 @@ export const UltrasoundViewer: React.FC<UltrasoundViewerProps> = ({ imageSrc }) 
                     height={600}
                 />
 
-                {/* Medical Scanline Overlay */}
-                <div className={styles.scanline} />
-                <div className={styles.vignette} />
-
-                {!currentFrame && (
-                    <div className={styles.placeholder}>
-                        <div className={styles.spinner} />
-                        <p>Awaiting ultrasound stream...</p>
-                    </div>
-                )}
-
                 {/* HUD Overlay */}
                 <div className={styles.hud}>
-                    <div className={styles.hudTop}>
-                        <div className={styles.hudGroup}>
-                            <span className={styles.hudLabel}>
-                                <Target size={10} style={{ marginRight: '4px' }} />
-                                TARGET:
-                            </span>
-                            <span className={styles.hudValue}>{config?.targetOrgans[0]?.toUpperCase() || 'NONE'}</span>
-                        </div>
-                        {currentFeedback && (
-                            <div className={styles.hudGroup}>
-                                <span className={styles.hudLabel}>
-                                    <ScanEye size={10} style={{ marginRight: '4px' }} />
-                                    VIEW:
-                                </span>
-                                <Badge variant="info">
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <Layers size={12} />
-                                        {currentFeedback.viewLabel}
-                                    </span>
-                                </Badge>
-                            </div>
-                        )}
+                    <div className={styles.hudTopRight}>
+                        <div className={styles.metadata}>US-DEMO-2026</div>
+                        <div className={styles.metadata}>{new Date().toLocaleDateString()}</div>
+                    </div>
+                    
+                    <div className={styles.targetBadge}>
+                        <Target size={12} className={styles.targetIcon} />
+                        <span>TARGET: KIDNEY</span>
                     </div>
 
-                    <div className={styles.hudBottom}>
-                        {currentFeedback && (
-                            <div className={styles.qualityBar}>
-                                <div className={styles.qualityHeader}>
-                                    <span className={styles.hudLabel}>QUALITY SCORE:</span>
-                                    <span className={styles.qualityValue} style={{ color: qualityInfo?.color }}>
-                                        {currentFeedback.qualityScore}% - {qualityInfo?.label}
-                                    </span>
-                                </div>
-                                <div className={styles.progressBar}>
-                                    <div
-                                        className={styles.progressFill}
-                                        style={{
-                                            width: `${currentFeedback.qualityScore}%`,
-                                            backgroundColor: qualityInfo?.color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        )}
+                    <div className={styles.depthIndicator}>
+                        10
                     </div>
                 </div>
             </div>
 
-            {/* Controls */}
+            {/* Controls strip */}
             <div className={styles.controls}>
-                <div className={styles.leftControls}>
-                    <Button variant="secondary" size="small" onClick={handleFreeze}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {status === 'paused' ? <Play size={14} fill="currentColor" /> : <Pause size={14} fill="currentColor" />}
-                            {status === 'paused' ? 'Resume' : 'Freeze'}
-                        </span>
-                    </Button>
-                    <Button variant="secondary" size="small" onClick={handleCapture}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Camera size={14} />
-                            Snapshot
-                        </span>
-                    </Button>
+                <div className={styles.buttonGroup}>
+                    <button className={styles.actionBtn} onClick={handleFreeze}>
+                        {status === 'paused' ? <Play size={14} fill="currentColor" /> : <Pause size={14} fill="currentColor" />}
+                        {status === 'paused' ? 'RESUME' : 'FREEZE'}
+                    </button>
+                    <button className={styles.actionBtn} onClick={handleCapture}>
+                        <Camera size={14} />
+                        SNAPSHOT
+                    </button>
                 </div>
-                <div className={styles.rightControls}>
-                    <label className={styles.toggle}>
+                
+                <div className={styles.guidanceToggle}>
+                    <span>Guidance Overlay</span>
+                    <div className={styles.switch}>
                         <input type="checkbox" defaultChecked />
-                        <span className={styles.toggleLabel}>Show guidance overlay</span>
-                    </label>
+                        <span className={styles.slider} />
+                    </div>
                 </div>
             </div>
         </div>

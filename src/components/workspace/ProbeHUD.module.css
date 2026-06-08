@@ -1,0 +1,152 @@
+.tipsCard {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 200px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+}
+
+.tipsTitle {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 1px;
+}
+
+.tipItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.iconGood { color: #4ade80; }
+.iconWarn { color: #fbbf24; }
+.iconInfo { color: #3b82f6; }
+
+.pressureCard {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 140px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(8px);
+    z-index: 10;
+}
+
+.pressureHeader {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 1px;
+}
+
+.gaugeContainer {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.gaugeSvg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.gaugeBg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.05);
+    stroke-width: 8;
+}
+
+.gaugeFill {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.5s ease;
+}
+
+.gaugeContent {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.gaugePercent {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+}
+
+.gaugeStatus {
+    font-size: 10px;
+    font-weight: 600;
+    color: #4ade80;
+}
+
+.interactionHints {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(15, 23, 42, 0.6);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+}
+
+.interactionHints strong {
+    color: white;
+    font-weight: 600;
+}
+
+.hintDot {
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.resetViewBtn {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 14px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    z-index: 10;
+}
+
+.resetViewBtn:hover {
+    background: rgba(51, 65, 85, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+}

@@ -11,6 +11,8 @@ import logging
 import os
 from functools import lru_cache
 from pathlib import Path
+import time
+import numpy as np
 from typing import Optional
 
 from volume_loader import (
@@ -24,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # ── Dataset root ─────────────────────────────────────────────────────────────
 # Absolute path to the folder containing all case sub-directories
-DATASET_ROOT = Path(r"/Users/ahmedbahaa/Documents/Ai_guided_ultrasound/ai_guided_ultrasound/backend/3d test")
+DATASET_ROOT = Path(r"E:\downloads\usdemo\ct.volumes\3d test")
 
 # LRU cache size: how many volumes to keep in memory simultaneously
 CACHE_SIZE = 3
@@ -179,6 +181,40 @@ def load_case(case_id: str) -> Optional[VolumeData]:
 def get_loaded_volume(case_id: str) -> Optional[VolumeData]:
     """Return a previously loaded volume without re-loading."""
     return _loaded_volumes.get(case_id)
+
+
+def get_alignment(case_id: str) -> dict:
+    """
+    Look for a pre-computed alignment JSON file in the case directory.
+    Format: {case_id}_alignment.json
+    Returns: { "affineMatrix": 4x4, "spacing": [1,1,1], "bounds": {} }
+    """
+    import json
+    info = _cases_by_id.get(case_id)
+    if not info:
+        return {}
+
+    # Expected path: E:\downloads\usdemo\ct.volumes\3d test\{case_id}\{case_id}_alignment.json
+    alignment_path = info.folder / f"{case_id}_alignment.json"
+    
+    if alignment_path.exists():
+        try:
+            with open(alignment_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading alignment for {case_id}: {e}")
+    
+    # Return default identity alignment if file missing or corrupt
+    return {
+        "affineTransform": {
+            "matrix": np.identity(4).tolist(),
+            "caseId": case_id,
+            "templateId": "template_v1",
+            "timestamp": time.time()
+        },
+        "spacing": [1.0, 1.0, 1.0],
+        "canonicalBounds": None
+    }
 
 
 def get_status() -> dict:

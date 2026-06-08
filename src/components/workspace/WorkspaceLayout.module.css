@@ -17,7 +17,10 @@
     gap: var(--spacing-lg);
     flex: 1;
     min-height: 0;
-    /* Important for children to scroll */
+}
+
+.grid.noLeft {
+    grid-template-columns: 1fr 350px;
 }
 
 .leftPanel,

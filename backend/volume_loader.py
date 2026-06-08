@@ -41,16 +41,16 @@ def load_volume(volume_path: str | Path) -> VolumeData:
     path = Path(volume_path)
     logger.info(f"Loading volume: {path.name}")
 
-    img = nib.load(str(path))
+    img = nib.load(str(path)) # type: ignore
     # nibabel gives (X,Y,Z) order; transpose to (Z,Y,X) for easier slicing
-    arr = np.asarray(img.dataobj, dtype=np.float32)
+    arr = np.asarray(img.dataobj, dtype=np.float32) # type: ignore
     arr = np.transpose(arr, (2, 1, 0))   # → (Z, Y, X) = (D, H, W)
 
-    affine = img.affine.astype(np.float64)
+    affine = img.affine.astype(np.float64) # type: ignore
     # Voxel spacing from header
-    header = img.header
+    header = img.header # type: ignore
     try:
-        zooms = header.get_zooms()[:3]
+        zooms = header.get_zooms()[:3] # type: ignore
         voxel_spacing = (float(zooms[2]), float(zooms[1]), float(zooms[0]))  # (dz,dy,dx)
     except Exception:
         voxel_spacing = (1.0, 1.0, 1.0)
@@ -80,8 +80,8 @@ def load_segmentation_label(label_path: str | Path, volume: VolumeData) -> None:
     path = Path(label_path)
     logger.info(f"Loading segmentation label: {path.name}")
     try:
-        seg_img = nib.load(str(path))
-        seg_arr = np.asarray(seg_img.dataobj, dtype=np.int16)
+        seg_img = nib.load(str(path)) # type: ignore
+        seg_arr = np.asarray(seg_img.dataobj, dtype=np.int16) # type: ignore
         seg_arr = np.transpose(seg_arr, (2, 1, 0))  # → (Z,Y,X)
         if seg_arr.shape != volume.shape:
             logger.warning(

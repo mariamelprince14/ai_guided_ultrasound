@@ -1,0 +1,125 @@
+.panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+}
+
+.minimalHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.titleSection {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.title {
+    font-size: 10px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 1px;
+}
+
+.statusListening {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    background: #3b82f6;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+}
+
+.feed {
+    flex: 1;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.coachingItem {
+    display: flex;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.avatar {
+    width: 24px;
+    height: 24px;
+    background: #1e293b;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.suggestion {
+    font-size: 12px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0;
+}
+
+.timestamp {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.tipsSection {
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tipsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.tipsTitle {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.compactTips {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tip {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 500;
+}

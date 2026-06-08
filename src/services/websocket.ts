@@ -103,10 +103,11 @@ class WebSocketService {
 
     /** Send probe pose update to backend */
     sendProbeUpdate(x: number, y: number, z: number,
-                    pitch: number, yaw: number, roll: number): void {
+                    pitch: number, yaw: number, roll: number,
+                    pressure = 0, contactQuality = 100, probeType = 'curvilinear'): void {
         this.send({
             type: 'probeUpdate',
-            data: { x, y, z, pitch, yaw, roll },
+            data: { x, y, z, pitch, yaw, roll, pressure, contactQuality, probeType },
         });
     }
 
