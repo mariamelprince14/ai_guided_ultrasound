@@ -144,10 +144,11 @@ function addUVs(geometry: THREE.BufferGeometry): void {
 // ─── Skin Material ────────────────────────────────────────────────────────────
 
 /**
- * Professional clinical skin material — always opaque.
- * Models medical silicone phantom or realistic human skin.
+ * Professional clinical skin material — transparency based on visualization mode.
+ * Beginner: semi-transparent to show internal organs
+ * Intermediate/Advanced: opaque for realistic phantom simulation
  */
-function createSkinMaterial(): THREE.MeshPhysicalMaterial {
+function createSkinMaterial(isBeginnerMode: boolean): THREE.MeshPhysicalMaterial {
     return new THREE.MeshPhysicalMaterial({
         color: new THREE.Color('#c89470'),   // Warm anatomical skin
         roughness: 0.62,
@@ -160,9 +161,9 @@ function createSkinMaterial(): THREE.MeshPhysicalMaterial {
         sheen: 0.12,
         sheenColor: new THREE.Color('#8ba0b8'),
         sheenRoughness: 0.6,
-        // Solid — no transparency
-        transparent: false,
-        opacity: 1.0,
+        // Transparency for educational visualization (Beginner mode)
+        transparent: isBeginnerMode,
+        opacity: isBeginnerMode ? 0.45 : 1.0,
         side: THREE.FrontSide,
     });
 }
@@ -210,6 +211,8 @@ export const Volume35TorsoMesh: React.FC<Volume35TorsoMeshProps> = () => {
     const { torsoSettings, visualizationSettings, setTorsoBounds, setMmToSceneScale } = useAppStore();
     const groupRef = useRef<THREE.Group>(null);
 
+    const isBeginnerMode = visualizationSettings.mode === 'beginner';
+
     const { geometry, torsoScale, bounds3d } = useMemo(() => {
         const geom = generateMedicalTorsoGeometry();
         addUVs(geom);
@@ -244,7 +247,7 @@ export const Volume35TorsoMesh: React.FC<Volume35TorsoMeshProps> = () => {
         }
     }, [bounds3d, setTorsoBounds, setMmToSceneScale]);
 
-    const material = useMemo(() => createSkinMaterial(), []);
+    const material = useMemo(() => createSkinMaterial(isBeginnerMode), [isBeginnerMode]);
 
     const anatomicalMarkers = useMemo(() => createAnatomicalMarkers(), []);
 
@@ -252,7 +255,7 @@ export const Volume35TorsoMesh: React.FC<Volume35TorsoMeshProps> = () => {
 
     return (
         <group ref={groupRef} name="volume35-torso">
-            {/* PRIMARY TORSO MESH — named "torso-model" for DragController raycasting */}
+            {/* PRIMARY TORSO MESH — anterior surface now faces camera, named "torso-model" for DragController raycasting */}
             <mesh
                 name="torso-model"
                 geometry={geometry}
@@ -267,6 +270,16 @@ export const Volume35TorsoMesh: React.FC<Volume35TorsoMeshProps> = () => {
                 object={anatomicalMarkers}
                 scale={[torsoScale, torsoScale, torsoScale]}
             />
+
+            {/* Invisible low-poly collider for smooth probe raycasting */}
+            <mesh
+                name="torso-collider"
+                scale={[torsoScale, torsoScale, torsoScale]}
+                visible={false}
+            >
+                <sphereGeometry args={[0.65, 24, 16, 0, Math.PI * 2, 0, Math.PI]} />
+                <meshBasicMaterial visible={false} />
+            </mesh>
         </group>
     );
 };

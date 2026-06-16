@@ -123,6 +123,12 @@ async def get_case_volume(case_id: str):
     Returns downsampled voxel data for 3D visualization.
     Format: raw Uint8 binary data.
     Metadata is provided in X-Volume headers.
+    
+    VOLUME 35 ANTERIOR VIEW FIX:
+    For Volume 35 cases, reorganize voxel axes for proper anterior viewing:
+    - Input: (Z, Y, X) = (S-I, A-P, L-R) in NIfTI LPS order
+    - Output: (X, Z, Y_flipped) for proper anterior-facing display
+    - Also flip X-axis for correct L-R orientation (LPS has L=+, but we need R=+)
     """
     volume = case_manager.load_case(case_id)
     if volume is None:
@@ -139,18 +145,57 @@ async def get_case_volume(case_id: str):
     norm_pixels = (norm_pixels - hu_min) / (hu_max - hu_min) * 255.0
     u8_pixels = norm_pixels.astype(np.uint8)
 
-    # 3. Prepare response with metadata in headers
+    # Downsample and process segmentation if available (nearest neighbor)
+    if volume.seg_array is not None:
+        from scipy import ndimage
+        ds_seg = ndimage.zoom(volume.seg_array, factors, order=0)
+        # Flip X-axis (LR)
+        ds_seg = ds_seg[:, :, ::-1]
+        # Flip Y-axis (AP)
+        ds_seg = ds_seg[:, ::-1, :]
+        # Transpose to (AP, SI, LR)
+        ds_seg = np.ascontiguousarray(np.transpose(ds_seg, (1, 0, 2)))
+        ds_seg = ds_seg.astype(np.uint8)
+    else:
+        ds_seg = np.zeros_like(u8_pixels, dtype=np.uint8)
+
+    # 3. Anatomical alignment for WebGL 3D Texture:
+    # We want to map voxels so that:
+    # - Last axis (varying fastest in C-order flat array) = Left-Right (LR, width).
+    # - Middle axis = Superior-Inferior (SI, height).
+    # - First axis (varying slowest) = Anterior-Posterior (AP, depth).
+    #
+    # Input shape: (Z, Y, X) where Z=SI, Y=AP, X=LR (LPS convention).
+    # - X-axis (LR): flip so +X is Right (TLS convention has Right=+X, but NIfTI LPS has Left=+X)
+    # - Y-axis (AP): flip so +Z is Anterior (TLS convention has Anterior=+Z, but NIfTI LPS has Posterior=+Y)
+    # - Z-axis (SI): keep as is (+Y is Superior)
+    
+    # Flip X-axis (LR)
+    u8_pixels = u8_pixels[:, :, ::-1]
+    # Flip Y-axis (AP)
+    u8_pixels = u8_pixels[:, ::-1, :]
+    
+    # Transpose from (Z, Y, X) = (SI, AP, LR) to (AP, SI, LR)
+    # The axis indices in (Z, Y, X) are (0, 1, 2)
+    # We want (AP, SI, LR) which corresponds to indices (1, 0, 2)
+    u8_pixels = np.ascontiguousarray(np.transpose(u8_pixels, (1, 0, 2)))
+    
+    # Pack CT volume (channel 0) and Segmentation (channel 1)
+    packed = np.stack([u8_pixels, ds_seg], axis=-1)  # shape: (depth, height, width, 2)
+    axis_order = "AP-SI-LR-packed"
+
+    # 4. Prepare response with metadata in headers
     headers = {
-        "X-Volume-Dims": ",".join(map(str, u8_pixels.shape)),  # (Z, Y, X)
+        "X-Volume-Dims": ",".join(map(str, packed.shape[:3])),
         "X-Volume-Spacing": ",".join(map(str, volume.voxel_spacing)),
         "X-Volume-Factors": ",".join(map(str, factors)),
         "X-Volume-HU-Range": f"{hu_min},{hu_max}",
-        "X-Volume-Axis-Order": "Z-Y-X",
+        "X-Volume-Axis-Order": axis_order,
         "Access-Control-Expose-Headers": "X-Volume-Dims, X-Volume-Spacing, X-Volume-Factors, X-Volume-HU-Range, X-Volume-Axis-Order"
     }
 
     return Response(
-        content=u8_pixels.tobytes(),
+        content=packed.tobytes(),
         media_type="application/octet-stream",
         headers=headers
     )

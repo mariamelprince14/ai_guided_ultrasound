@@ -106,7 +106,6 @@ export const TorsoMesh: React.FC = () => {
                 ref={groupRef}
                 position={torsoPosition}
                 scale={[torsoScale, torsoScale, torsoScale]}
-                rotation={[0, Math.PI, 0]}
             >
                 <primitive object={clonedScene} name="torso-model" />
             </group>
