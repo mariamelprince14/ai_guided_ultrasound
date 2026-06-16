@@ -40,10 +40,10 @@ export interface ProbeConstraints {
  * Default constraints for ultrasound probe placement
  */
 export const DEFAULT_PROBE_CONSTRAINTS: ProbeConstraints = {
-    anteriorOnly: true,
-    verticalBounds: [-0.7, 1.1],     // Abdominal zone in torso local Y
+    anteriorOnly: false,              // Allow all torso surfaces (anterior, posterior, lateral)
+    verticalBounds: [-3, 3],          // Full torso height coverage
     maxPenetrationDepth: 5,           // mm
-    minNormalDot: 0.1,                // Surface should face roughly toward camera
+    minNormalDot: -0.8,               // Allow all surface normals except pointing directly inward
 };
 
 /**
@@ -54,7 +54,6 @@ export const DEFAULT_PROBE_CONSTRAINTS: ProbeConstraints = {
  * @param camera - THREE.js camera
  * @param raycaster - THREE.js raycaster (reused for performance)
  * @param torsoMesh - Torso mesh object
- * @param registrationGroup - Registration group (for local coordinate conversion)
  * @param constraints - Interaction constraints
  * @returns ProbeRaycastHit with validation info, or null if no valid hit
  */
@@ -63,7 +62,6 @@ export function raycastProbeHit(
     camera: THREE.Camera,
     raycaster: THREE.Raycaster,
     torsoMesh: THREE.Object3D,
-    registrationGroup: THREE.Object3D,
     constraints: ProbeConstraints = DEFAULT_PROBE_CONSTRAINTS
 ): ProbeRaycastHit | null {
     raycaster.setFromCamera(screenPos, camera);
@@ -76,8 +74,7 @@ export function raycastProbeHit(
         const validation = validateTorsoHit(hit, torsoMesh, constraints);
         
         if (validation.isValid) {
-            // Convert world point to registration group local space
-            const localPoint = registrationGroup.worldToLocal(hit.point.clone());
+            const localPoint = hit.point.clone();
             
             // Calculate world-space surface normal
             const worldNormal = calculateWorldNormal(hit, torsoMesh);
@@ -101,7 +98,7 @@ export function raycastProbeHit(
  */
 function validateTorsoHit(
     hit: THREE.Intersection,
-    torsoMesh: THREE.Object3D,
+    _torsoMesh: THREE.Object3D,
     constraints: ProbeConstraints
 ): { isValid: boolean; reason?: string } {
     if (!hit.face) {
@@ -196,7 +193,7 @@ export function clampProbeToVolume(
  */
 export function buildNormalAlignedRotation(
     surfaceNormal: THREE.Vector3,
-    currentRotation?: { pitch: number; yaw: number; roll: number }
+    _currentRotation?: { pitch: number; yaw: number; roll: number }
 ): THREE.Quaternion {
     // Normalize the surface normal
     const normal = surfaceNormal.clone().normalize();

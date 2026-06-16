@@ -199,7 +199,7 @@ const initialVisualizationSettings: VisualizationSettings = {
     showTorso: true,
     torsoOpacity: 1.0,
     showVolume: true,
-    volumeOpacity: 0.22,
+    volumeOpacity: 0.65,
     showProbe: true,
     showSlicePlane: true,
     showGuidance: true,
@@ -492,14 +492,14 @@ export const useAppStore = create<AppState>((set) => ({
         } else if (mode === 'intermediate') {
             // Intermediate: faint anatomy only during guidance, minimal hints
             settings.showVolume = true;
-            settings.volumeOpacity = 0.08;
+            settings.volumeOpacity = 0.15;
             settings.showGuidance = false;
             settings.showSlicePlane = true;
             settings.showProbe = true;
         } else {
             // Beginner: partial educational anatomy visibility + full guidance
             settings.showVolume = true;
-            settings.volumeOpacity = 0.22;
+            settings.volumeOpacity = 0.65;
             settings.showGuidance = true;
             settings.showSlicePlane = true;
             settings.showProbe = true;

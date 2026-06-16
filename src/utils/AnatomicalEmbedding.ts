@@ -38,6 +38,7 @@
  */
 
 import type { BoundingBox3D, VolumeRegistration, AnatomyMetadata } from '@/types';
+import * as THREE from 'three';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -479,4 +480,68 @@ if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('anatomy-debug-toggle', { detail: { enabled: state } }));
         }
     });
+}
+
+/**
+ * Convert a point from anatomical-subject space (scene units) to NIfTI world millimeter coordinates
+ */
+export function subjectToNifti(
+    pointSubject: THREE.Vector3 | { x: number; y: number; z: number },
+    registration: VolumeRegistration,
+    scale: number,
+    bounds: { center: [number, number, number] },
+    anatomy: AnatomyMetadata
+): THREE.Vector3 {
+    const axisRemap = computeAxisRemapFromAffine(anatomy);
+    const signs = axisRemap.signs;
+    
+    // 1. Convert to local CT space (mm from volume center)
+    const factor = registration.scale * scale;
+    const xt = (pointSubject.x - registration.position[0]) / factor;
+    const yt = (pointSubject.y - registration.position[1]) / factor;
+    const zt = (pointSubject.z - registration.position[2]) / factor;
+    
+    // 2. Remap to NIfTI axes and apply signs
+    const xn_offset = xt * signs[0];
+    const yn_offset = zt * signs[2]; // local Z is AP, which is NIfTI Y
+    const zn_offset = yt * signs[1]; // local Y is SI, which is NIfTI Z
+    
+    // 3. Add NIfTI center
+    return new THREE.Vector3(
+        xn_offset + bounds.center[0],
+        yn_offset + bounds.center[1],
+        zn_offset + bounds.center[2]
+    );
+}
+
+/**
+ * Convert a point from NIfTI world millimeter coordinates to anatomical-subject space (scene units)
+ */
+export function niftiToSubject(
+    pointNifti: { x: number; y: number; z: number },
+    registration: VolumeRegistration,
+    scale: number,
+    bounds: { center: [number, number, number] },
+    anatomy: AnatomyMetadata
+): THREE.Vector3 {
+    const axisRemap = computeAxisRemapFromAffine(anatomy);
+    const signs = axisRemap.signs;
+    
+    // 1. Subtract NIfTI center
+    const xn_offset = pointNifti.x - bounds.center[0];
+    const yn_offset = pointNifti.y - bounds.center[1];
+    const zn_offset = pointNifti.z - bounds.center[2];
+    
+    // 2. Convert to TLS millimeters (apply signs and swap axes)
+    const xt = xn_offset * signs[0];
+    const yt = zn_offset * signs[1]; // NIfTI Z is SI, which is local Y
+    const zt = yn_offset * signs[2]; // NIfTI Y is AP, which is local Z
+    
+    // 3. Scale and shift to scene units
+    const factor = registration.scale * scale;
+    return new THREE.Vector3(
+        xt * factor + registration.position[0],
+        yt * factor + registration.position[1],
+        zt * factor + registration.position[2]
+    );
 }

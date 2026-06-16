@@ -20,6 +20,7 @@ import React, { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useAppStore } from '@store/useAppStore';
+import { niftiToSubject } from '@/utils/AnatomicalEmbedding';
 
 // ─── Pulsing Scan Zone Ring ───────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ interface AnatomyOverlayProps {
 const AnatomyOverlaySphere: React.FC<AnatomyOverlayProps> = ({ scale, probePos }) => {
     const sphereRef = useRef<THREE.Mesh>(null);
     const kidneyHintRef = useRef<THREE.Mesh>(null);
+    const { registration, anatomyMetadata, volumeInfo } = useAppStore();
 
     useFrame(({ clock }) => {
         const t = clock.elapsedTime;
@@ -95,9 +97,13 @@ const AnatomyOverlaySphere: React.FC<AnatomyOverlayProps> = ({ scale, probePos }
     });
 
     // Position the reveal sphere at the probe's current location
-    const px = probePos.x * scale;
-    const py = probePos.y * scale;
-    const pz = probePos.z * scale;
+    const posScene = (anatomyMetadata && volumeInfo?.bounds)
+        ? niftiToSubject(probePos, registration, scale, volumeInfo.bounds, anatomyMetadata)
+        : new THREE.Vector3(probePos.x * scale, probePos.y * scale, probePos.z * scale);
+
+    const px = posScene.x;
+    const py = posScene.y;
+    const pz = posScene.z;
 
     const revealRadius = 2.8 * scale;
 

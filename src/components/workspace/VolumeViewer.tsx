@@ -43,6 +43,7 @@ import { RealisticProbe } from './RealisticProbeModels';
 import { Volume35TorsoOverlays } from './Volume35TorsoOverlays';
 import { AnatomyDebugOverlay } from './AnatomyDebugOverlay';
 import { isVolume35Case } from '@/utils/Volume35Integration';
+import { subjectToNifti, niftiToSubject } from '@/utils/AnatomicalEmbedding';
 
 import styles from './VolumeViewer.module.css';
 
@@ -93,11 +94,12 @@ const VOLUME_FRAGMENT_SHADER = `
   
   varying vec3 v_local_pos;
 
-  // Random number for jittering
+  // Random number for jittering to reduce banding
   float rand(vec2 co) {
     return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
   }
 
+  // Ray-box intersection helper
   vec2 intersect_box(vec3 orig, vec3 dir) {
     vec3 inv_dir = 1.0 / dir;
     vec3 t0 = (u_min - orig) * inv_dir;
@@ -109,15 +111,21 @@ const VOLUME_FRAGMENT_SHADER = `
     return vec2(t_start, t_end);
   }
 
+  // Safe gradient estimation with epsilon to prevent NaN
   vec3 get_gradient(vec3 uvw) {
-    float h = 0.01;
+    float h = 0.005; // Step size for central differences
     float v0 = texture(u_data, uvw + vec3(h, 0.0, 0.0)).r;
     float v1 = texture(u_data, uvw - vec3(h, 0.0, 0.0)).r;
     float v2 = texture(u_data, uvw + vec3(0.0, h, 0.0)).r;
     float v3 = texture(u_data, uvw - vec3(0.0, h, 0.0)).r;
     float v4 = texture(u_data, uvw + vec3(0.0, 0.0, h)).r;
     float v5 = texture(u_data, uvw - vec3(0.0, 0.0, h)).r;
-    return normalize(vec3(v0 - v1, v2 - v3, v4 - v5));
+    vec3 g = vec3(v0 - v1, v2 - v3, v4 - v5);
+    float len = length(g);
+    if (len < 0.0001) {
+        return vec3(0.0);
+    }
+    return g / len;
   }
 
   void main() {
@@ -134,15 +142,15 @@ const VOLUME_FRAGMENT_SHADER = `
     vec3 composite_color = vec3(0.0);
     float composite_alpha = 0.0;
     
-    const int STEPS = 160;
+    const int STEPS = 180; // Increased steps slightly for higher quality rendering
     float dt = (t_hits.y - t_hits.x) / float(STEPS);
     
     float l_low = u_wl - u_ww * 0.5;
 
-    for (int i = 0; i < 160; i++) {
+    for (int i = 0; i < 180; i++) {
         vec3 curr_local = u_cam_pos + t * ray_dir;
         
-        // clipping logic (in local coordinates)
+        // Clipping logic (in local coordinates)
         if (u_clipping_enabled) {
             float dist = distance(curr_local, u_probe_pos);
             if (dist > 6.0) { // 60mm radius (approx 6 scene units depending on scale)
@@ -153,34 +161,123 @@ const VOLUME_FRAGMENT_SHADER = `
 
         vec3 uvw = (curr_local - u_min) / (u_max - u_min);
         
-        float val = texture(u_data, uvw).r;
+        vec4 texSample = texture(u_data, uvw);
+        float val = texSample.r;
+        float seg_val = texSample.g;
+        int label = int(seg_val * 255.0 + 0.5);
+        
         float intensity = clamp((val - l_low) / u_ww, 0.0, 1.0);
         
-        if (intensity > 0.02) {
-            float tf_alpha;
-            vec3 tf_color;
+        if (label > 0 || val > 0.15) {
+            float tf_alpha = 0.0;
+            vec3 tf_color = vec3(0.0);
+            float spec_intensity = 0.05;
 
-            if (intensity < 0.2) {
-                // Noise / Air suppression
-                tf_alpha = 0.0;
-                tf_color = vec3(0.0);
-            } else if (intensity < 0.6) {
-                // Soft Tissue (Reddish/Fleshy)
-                float norm = (intensity - 0.2) / 0.4;
-                tf_alpha = pow(norm, 1.8) * 0.08;
-                tf_color = mix(vec3(0.6, 0.3, 0.3), vec3(0.8, 0.5, 0.4), norm);
+            if (label > 0) {
+                // Color-coded organs based on segmentation label ID
+                if (label == 5) {
+                    // Liver: Terracotta / warm brown
+                    tf_color = vec3(0.86, 0.44, 0.28);
+                    tf_alpha = 0.35;
+                    spec_intensity = 0.12;
+                } else if (label == 1) {
+                    // Spleen: Purple
+                    tf_color = vec3(0.58, 0.31, 0.58);
+                    tf_alpha = 0.30;
+                    spec_intensity = 0.08;
+                } else if (label == 2 || label == 3) {
+                    // Kidneys: Maroon
+                    tf_color = vec3(0.65, 0.23, 0.18);
+                    tf_alpha = 0.30;
+                    spec_intensity = 0.10;
+                } else if (label == 4) {
+                    // Gallbladder: Forest green
+                    tf_color = vec3(0.18, 0.52, 0.28);
+                    tf_alpha = 0.38;
+                    spec_intensity = 0.22;
+                } else if (label == 6) {
+                    // Stomach: Light pink/salmon
+                    tf_color = vec3(0.85, 0.52, 0.48);
+                    tf_alpha = 0.25;
+                    spec_intensity = 0.05;
+                } else if (label == 7) {
+                    // Pancreas: Golden orange
+                    tf_color = vec3(0.88, 0.62, 0.28);
+                    tf_alpha = 0.28;
+                    spec_intensity = 0.06;
+                } else if (label == 8 || label == 9) {
+                    // Adrenal Glands: Yellowish
+                    tf_color = vec3(0.82, 0.72, 0.24);
+                    tf_alpha = 0.25;
+                    spec_intensity = 0.04;
+                } else if (label == 15 || label == 16 || label == 17) {
+                    // Bowel / Duodenum / Colon: Beige/tan
+                    tf_color = vec3(0.78, 0.65, 0.48);
+                    tf_alpha = 0.22;
+                    spec_intensity = 0.05;
+                } else if (label >= 18 && label <= 31) {
+                    // Spine / Vertebrae: Ivory / White
+                    tf_color = vec3(0.92, 0.90, 0.82);
+                    tf_alpha = 0.50;
+                    spec_intensity = 0.30;
+                } else if (label == 32) {
+                    // Heart: Red
+                    tf_color = vec3(0.82, 0.15, 0.15);
+                    tf_alpha = 0.35;
+                    spec_intensity = 0.15;
+                } else if (label == 33 || label == 37 || label == 38) {
+                    // Aorta & Arteries: Bright red
+                    tf_color = vec3(0.92, 0.18, 0.18);
+                    tf_alpha = 0.32;
+                    spec_intensity = 0.20;
+                } else if (label == 35 || label == 36 || label == 39 || label == 40) {
+                    // IVC & Veins: Blue
+                    tf_color = vec3(0.18, 0.44, 0.86);
+                    tf_alpha = 0.32;
+                    spec_intensity = 0.20;
+                } else if (label >= 51 && label <= 67) {
+                    // Ribs / Sternum / Bones: Ivory / White
+                    tf_color = vec3(0.92, 0.90, 0.82);
+                    tf_alpha = 0.50;
+                    spec_intensity = 0.30;
+                } else {
+                    // Other segmented structures
+                    tf_color = vec3(0.68, 0.68, 0.68);
+                    tf_alpha = 0.15;
+                    spec_intensity = 0.05;
+                }
             } else {
-                // Bone / Dense structural elements (White/Ivory)
-                float norm = (intensity - 0.6) / 0.4;
-                tf_alpha = 0.15 + norm * 0.5;
-                tf_color = mix(vec3(0.9, 0.9, 0.8), vec3(1.0, 1.0, 1.0), norm);
-
-                // Add simple gradient-based shading for bone
-                vec3 normal = get_gradient(uvw);
-                float light = max(dot(normal, -ray_dir), 0.3); // Simple N-dot-L (camera light)
-                tf_color *= (0.6 + 0.4 * light);
+                // Non-segmented tissue (label == 0)
+                // Render as bone if raw CT value is high (val > 0.31)
+                if (val > 0.31) {
+                    tf_color = vec3(0.92, 0.90, 0.82); // Bone
+                    tf_alpha = 0.45;
+                    spec_intensity = 0.25;
+                } else {
+                    // Hide soft tissue / fat to make internal organs visible
+                    tf_alpha = 0.0;
+                }
             }
-            
+
+            // Phong-style shading with gradient-based normals for depth perception
+            vec3 normal = get_gradient(uvw);
+            if (length(normal) > 0.1) {
+                // Diffuse lighting: Headlight model (light direction = camera direction)
+                float diffuse = max(dot(normal, -ray_dir), 0.0);
+                
+                // Specular highlight: Shiny tissues (organs, bone)
+                vec3 half_dir = normalize(-ray_dir + -ray_dir);
+                float spec_power = (intensity > 0.5) ? 32.0 : 16.0;
+                float specular = pow(max(dot(normal, half_dir), 0.0), spec_power) * spec_intensity;
+                
+                // Phong lighting blend: ambient + diffuse + specular
+                float phong = 0.35 + 0.55 * diffuse + specular;
+                tf_color = clamp(tf_color * phong, 0.0, 1.0);
+            } else {
+                // Flat ambient-like fallback for homogeneous regions
+                tf_color *= 0.65;
+            }
+
             // Front-to-back alpha blending
             composite_color += (1.0 - composite_alpha) * tf_alpha * tf_color;
             composite_alpha += tf_alpha;
@@ -192,7 +289,8 @@ const VOLUME_FRAGMENT_SHADER = `
     }
 
     if (composite_alpha <= 0.02) discard;
-    // Apply global volume opacity from visualization mode
+    
+    // Apply global volume opacity
     gl_FragColor = vec4(composite_color, composite_alpha * u_volume_opacity);
   }
 `;
@@ -215,11 +313,20 @@ const VolumeRaymarch: React.FC<VolumeRaymarchProps> = ({
     useThree();
     const textureRef = useRef<THREE.Data3DTexture | null>(null);
 
-    // Initial texture creation
+    // Initial texture creation — the backend always returns (AP, SI, LR) order
     const texture = React.useMemo(() => {
         const { dims } = voxelData.metadata;
-        const tex = new THREE.Data3DTexture(voxelData.data, dims[2], dims[1], dims[0]); // W, H, D
-        tex.format = THREE.RedFormat;
+        
+        // dims[0] = AP (depth)
+        // dims[1] = SI (height)
+        // dims[2] = LR (width)
+        // Data3DTexture expects (width, height, depth) = (LR, SI, AP)
+        const w = dims[2];  // LR (width)
+        const h = dims[1];  // Z (SI)
+        const d = dims[0];  // Y (AP)
+        
+        const tex = new THREE.Data3DTexture(voxelData.data, w, h, d);
+        tex.format = THREE.RGFormat;
         tex.type = THREE.UnsignedByteType;
         tex.minFilter = THREE.LinearFilter;
         tex.magFilter = THREE.LinearFilter;
@@ -300,12 +407,14 @@ const VolumeRaymarch: React.FC<VolumeRaymarchProps> = ({
         // The box spans [-sx/2, +sx/2] in local X, [-sy/2, +sy/2] in local Y,
         // [-sz/2, +sz/2] in local Z.
         //
-        // Mapping to texture axes (u=LR, v=AP, w=SI):
+        // For Volume 35 with reordered axes (X, Z, Y) and [-π/2, 0, 0] rotation:
+        // The texture is organized as (u=X_LR, v=Z_SI, w=Y_AP)
+        // Mapping to local box axes:
         //   uniform x component → uvw.x (LR) → use local X half-extent sx/2
-        //   uniform y component → uvw.y (AP) → use local Z half-extent sz/2 (local Z = AP!)
-        //   uniform z component → uvw.z (SI) → use local Y half-extent sy/2 (local Y = SI!)
-        uniforms.u_min.value.set(-sx / 2, -sz / 2, -sy / 2);
-        uniforms.u_max.value.set( sx / 2,  sz / 2,  sy / 2);
+        //   uniform y component → uvw.y (SI) → use local Y half-extent sy/2
+        //   uniform z component → uvw.z (AP) → use local Z half-extent sz/2
+        uniforms.u_min.value.set(-sx / 2, -sy / 2, -sz / 2);
+        uniforms.u_max.value.set( sx / 2,  sy / 2,  sz / 2);
 
         uniforms.u_wl.value = normWL;
         uniforms.u_ww.value = normWW;
@@ -318,7 +427,7 @@ const VolumeRaymarch: React.FC<VolumeRaymarchProps> = ({
     });
 
     return (
-        <mesh ref={meshRef} position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <mesh ref={meshRef} position={[0, 0, 0]}>
             <boxGeometry args={[sx, sy, sz]} />
             <shaderMaterial
                 vertexShader={VOLUME_VERTEX_SHADER}
@@ -339,12 +448,15 @@ interface ProbeMeshProps {
 
 const ProbeMesh3D: React.FC<ProbeMeshProps> = ({ scale }) => {
     const groupRef = useRef<THREE.Group>(null);
-    const { probePos, probeRot, probeNormal, probePhysics } = useAppStore();
+    const { probePos, probeRot, probeNormal, probePhysics, registration, anatomyMetadata, volumeInfo } = useAppStore();
 
     useFrame(() => {
         if (!groupRef.current) return;
+        const posScene = (anatomyMetadata && volumeInfo?.bounds)
+            ? niftiToSubject(probePos, registration, scale, volumeInfo.bounds, anatomyMetadata)
+            : new THREE.Vector3(probePos.x * scale, probePos.y * scale, probePos.z * scale);
         const mat = buildProbeMatrix(
-            { x: probePos.x * scale, y: probePos.y * scale, z: probePos.z * scale },
+            posScene,
             probeRot,
             probeNormal
         );
@@ -451,7 +563,7 @@ interface SlicePlaneProps {
 
 const SlicePlane3D: React.FC<SlicePlaneProps> = ({ planeSizeMm, scale, currentFrame }) => {
     const meshRef = useRef<THREE.Mesh>(null);
-    const { probePos, probeRot, probeNormal } = useAppStore();
+    const { probePos, probeRot, probeNormal, registration, anatomyMetadata, volumeInfo } = useAppStore();
 
     // Projected Texture Logic
     const texture = React.useMemo(() => {
@@ -471,8 +583,11 @@ const SlicePlane3D: React.FC<SlicePlaneProps> = ({ planeSizeMm, scale, currentFr
 
     useFrame(() => {
         if (!meshRef.current) return;
+        const posScene = (anatomyMetadata && volumeInfo?.bounds)
+            ? niftiToSubject(probePos, registration, scale, volumeInfo.bounds, anatomyMetadata)
+            : new THREE.Vector3(probePos.x * scale, probePos.y * scale, probePos.z * scale);
         const mat = buildProbeMatrix(
-            { x: probePos.x * scale, y: probePos.y * scale, z: probePos.z * scale },
+            posScene,
             probeRot,
             probeNormal
         );
@@ -505,13 +620,16 @@ const SlicePlane3D: React.FC<SlicePlaneProps> = ({ planeSizeMm, scale, currentFr
 // Animated slice plane outline (follows probe transform via useFrame)
 const SlicePlaneOutline: React.FC<{ planeSizeMm: number; scale: number }> = ({ planeSizeMm, scale }) => {
     const lineRef = useRef<THREE.LineSegments>(null);
-    const { probePos, probeRot, probeNormal } = useAppStore();
+    const { probePos, probeRot, probeNormal, registration, anatomyMetadata, volumeInfo } = useAppStore();
     const half = (planeSizeMm * scale) / 2;
 
     useFrame(() => {
         if (!lineRef.current) return;
+        const posScene = (anatomyMetadata && volumeInfo?.bounds)
+            ? niftiToSubject(probePos, registration, scale, volumeInfo.bounds, anatomyMetadata)
+            : new THREE.Vector3(probePos.x * scale, probePos.y * scale, probePos.z * scale);
         const mat = buildProbeMatrix(
-            { x: probePos.x * scale, y: probePos.y * scale, z: probePos.z * scale },
+            posScene,
             probeRot,
             probeNormal
         );
@@ -620,7 +738,7 @@ type DragMode = 'slide' | 'rotate' | 'yaw';
 //     - Rotates probe about its own longitudinal axis
 //   Alt + LEFT drag → Camera orbit/pan escape hatch (bypasses probe)
 interface DragControllerProps {
-    volumeBounds: { min: [number, number, number]; max: [number, number, number] };
+    volumeBounds: { min: [number, number, number]; max: [number, number, number]; center: [number, number, number] };
     scale: number;
     selectedCaseId: string;
     orbitControlsRef: React.RefObject<any>;
@@ -636,6 +754,8 @@ const DragController: React.FC<DragControllerProps> = ({ scale, volumeBounds, se
         updatePose,
         probePhysics,
         updateProbeMetrics,
+        registration,
+        anatomyMetadata,
     } = useAppStore();
     const { gl, scene, raycaster, camera } = useThree();
     const isVolume35 = isVolume35Case(selectedCaseId);
@@ -667,10 +787,12 @@ const DragController: React.FC<DragControllerProps> = ({ scale, volumeBounds, se
     }, [gl]);
 
     const raycastTorso = useCallback((ndc: THREE.Vector2) => {
-        const torso = scene.getObjectByName('torso-model');
-        const reg   = scene.getObjectByName('registration-group');
-        if (!torso || !reg) return null;
-        return raycastProbeHit(ndc, camera, raycaster, torso, reg, DEFAULT_PROBE_CONSTRAINTS);
+        // Use the low-poly collider for smooth, reliable raycasting.
+        // Falls back to torso-model if collider not found.
+        const collider = scene.getObjectByName('torso-collider');
+        const target   = collider || scene.getObjectByName('torso-model');
+        if (!target) return null;
+        return raycastProbeHit(ndc, camera, raycaster, target, DEFAULT_PROBE_CONSTRAINTS);
     }, [scene, camera, raycaster]);
 
     // ── Pointer DOWN ───────────────────────────────────────────────────────────
@@ -703,12 +825,33 @@ const DragController: React.FC<DragControllerProps> = ({ scale, volumeBounds, se
             if (!hit?.isValidHit) return;
 
             dragMode.current = 'slide';
-            _probeTarget.copy(hit.point);
-            _normalTarget.copy(hit.normal);
+
+            const subject = scene.getObjectByName('anatomical-subject');
+            if (subject) {
+                // Convert hit point and normal from world space to anatomical-subject local space
+                const localPoint = subject.worldToLocal(hit.point.clone());
+                const localNormal = hit.normal.clone().transformDirection(subject.matrixWorld.clone().invert());
+
+                // Convert localPoint (scene units) to NIfTI millimeters
+                const hitMm = (anatomyMetadata && volumeBounds)
+                    ? subjectToNifti(localPoint, registration, scale, volumeBounds, anatomyMetadata)
+                    : new THREE.Vector3(
+                        (localPoint.x / scale - registration.position[0]) / registration.scale,
+                        (localPoint.y / scale - registration.position[1]) / registration.scale,
+                        (localPoint.z / scale - registration.position[2]) / registration.scale
+                    );
+
+                _probeTarget.set(hitMm.x, hitMm.y, hitMm.z);
+                _normalTarget.copy(localNormal);
+            } else {
+                _probeTarget.copy(hit.point);
+                _normalTarget.copy(hit.normal);
+            }
+
             if (orbitControlsRef.current) orbitControlsRef.current.enabled = false;
             e.stopPropagation();
         }
-    }, [getNdcFromEvent, raycastTorso, orbitControlsRef, interactionMode]);
+    }, [getNdcFromEvent, raycastTorso, orbitControlsRef, interactionMode, scale, registration, scene]);
 
     // ── Pointer MOVE ───────────────────────────────────────────────────────────
     const handlePointerMove = useCallback((e: PointerEvent) => {
@@ -719,8 +862,8 @@ const DragController: React.FC<DragControllerProps> = ({ scale, volumeBounds, se
         const dy = e.clientY - lastPointer.current.y;
         lastPointer.current = { x: e.clientX, y: e.clientY };
 
-        // Dead-zone: ignore micro-jitter from high-DPI mice
-        if (!exceedsDeadZone(dx, dy, 2)) return;
+        // Dead-zone: ignore micro-jitter from high-DPI mice (reduced to 0.15px for fine probe adjustments)
+        if (!exceedsDeadZone(dx, dy, 0.15)) return;
 
         // Track pointer speed for adaptive LERP
         pointerSpeed.current = Math.sqrt(dx * dx + dy * dy);
@@ -728,25 +871,43 @@ const DragController: React.FC<DragControllerProps> = ({ scale, volumeBounds, se
         if (dragMode.current === 'slide') {
             const ndc = getNdcFromEvent(e);
             const hit = raycastTorso(ndc);
-            if (!hit?.isValidHit) return;
-            const clamped = clampProbeToVolume(hit.point, volumeBounds);
-            _probeTarget.set(clamped.x, clamped.y, clamped.z);
-            _normalTarget.copy(hit.normal);
+            // Continue sliding even if hit is invalid (stay at last valid position)
+            if (hit?.isValidHit) {
+                const subject = scene.getObjectByName('anatomical-subject');
+                if (subject) {
+                    // Convert hit point and normal from world space to anatomical-subject local space
+                    const localPoint = subject.worldToLocal(hit.point.clone());
+                    const localNormal = hit.normal.clone().transformDirection(subject.matrixWorld.clone().invert());
+
+                    // Convert localPoint (scene units) to NIfTI millimeters
+                    const hitMm = (anatomyMetadata && volumeBounds)
+                        ? subjectToNifti(localPoint, registration, scale, volumeBounds, anatomyMetadata)
+                        : new THREE.Vector3(
+                            (localPoint.x / scale - registration.position[0]) / registration.scale,
+                            (localPoint.y / scale - registration.position[1]) / registration.scale,
+                            (localPoint.z / scale - registration.position[2]) / registration.scale
+                        );
+
+                    const clamped = clampProbeToVolume(hitMm, volumeBounds);
+                    _probeTarget.set(clamped.x, clamped.y, clamped.z);
+                    _normalTarget.copy(localNormal);
+                }
+            }
         }
 
         if (dragMode.current === 'rotate') {
             // Shift+drag: Δpitch from vertical movement, Δroll from horizontal
-            const sensitivity = 0.35; // degrees per pixel
+            const sensitivity = 0.5; // increased from 0.35 for snappier rotation response
             userPitch.current = Math.max(-60, Math.min(60, userPitch.current + dy * sensitivity));
             userRoll.current  = Math.max(-60, Math.min(60, userRoll.current  + dx * sensitivity));
         }
 
         if (dragMode.current === 'yaw') {
             // Ctrl+drag: yaw from horizontal movement
-            const sensitivity = 0.4; // degrees per pixel
+            const sensitivity = 0.55; // increased from 0.4 for snappier yaw response
             userYaw.current = (userYaw.current + dx * sensitivity) % 360;
         }
-    }, [getNdcFromEvent, raycastTorso, volumeBounds, interactionMode]);
+    }, [getNdcFromEvent, raycastTorso, volumeBounds, interactionMode, scale, registration, scene]);
 
     // ── Scroll → YAW ──────────────────────────────────────────────────────────
     const handleWheel = useCallback((e: WheelEvent) => {
@@ -793,10 +954,10 @@ const DragController: React.FC<DragControllerProps> = ({ scale, volumeBounds, se
         const isRotating = dragMode.current === 'rotate' || dragMode.current === 'yaw';
         const isActive   = isSliding || isRotating;
 
-        // Adaptive LERP factor — slower when pointer moves fast (prevents overshoot)
-        const alpha = adaptiveSmoothFactor(pointerSpeed.current, 0.22, 0.09);
-        // Decay speed toward 0 each frame
-        pointerSpeed.current *= 0.85;
+        // Adaptive LERP factor — high for immediate response, lower bound for fast sweeps
+        const alpha = adaptiveSmoothFactor(pointerSpeed.current, 0.7, 0.45);
+        // Decay speed toward 0 each frame (keep momentum)
+        pointerSpeed.current *= 0.88;
 
         // ── Smooth position toward target (only when sliding) ──────────────────
         if (isSliding) {
@@ -805,6 +966,7 @@ const DragController: React.FC<DragControllerProps> = ({ scale, volumeBounds, se
         } else {
             // Snap smooth state to store when not dragging (keeps sync on session load)
             smoothPos.current.set(probePos.x, probePos.y, probePos.z);
+            smoothNorm.current.set(probeNormal.x, probeNormal.y, probeNormal.z);
         }
 
         // ── Stability tracking ─────────────────────────────────────────────────
@@ -827,7 +989,15 @@ const DragController: React.FC<DragControllerProps> = ({ scale, volumeBounds, se
         const finalQuat = baseQuat.multiply(userQuat);
 
         // ── Build final 4×4 matrix ─────────────────────────────────────────────
-        const posScene = smoothPos.current.clone().multiplyScalar(scale);
+        // smoothPos.current is in millimeters (NIfTI coordinates).
+        // Convert to anatomical-subject space (scene units) for rendering:
+        const posScene = (anatomyMetadata && volumeBounds)
+            ? niftiToSubject(smoothPos.current, registration, scale, volumeBounds, anatomyMetadata)
+            : new THREE.Vector3(
+                (smoothPos.current.x * registration.scale + registration.position[0]) * scale,
+                (smoothPos.current.y * registration.scale + registration.position[1]) * scale,
+                (smoothPos.current.z * registration.scale + registration.position[2]) * scale
+            );
         const mat = new THREE.Matrix4()
             .makeRotationFromQuaternion(finalQuat)
             .setPosition(posScene);
@@ -1092,7 +1262,7 @@ export const VolumeViewer: React.FC = () => {
     // Construct adaptive hint text based on current interactionMode
     const getHintText = () => {
         if (interactionMode === 'probe') {
-            return "🖱️ Drag on Torso: Move Probe · Drag outside: Orbit · Scroll: Zoom · Right-drag: Orbit · Middle-drag (or Shift+Left): Pan";
+            return "🖱️ Left-drag: Move Probe · Shift+drag: Tilt · Ctrl+drag: Rotate · Scroll: Yaw · Alt+drag: Orbit";
         } else if (interactionMode === 'orbit') {
             return "🖱️ Drag anywhere: Orbit/Rotate Torso · Scroll: Zoom · Right-drag: Orbit · Middle-drag: Pan";
         } else {
@@ -1160,6 +1330,9 @@ export const VolumeViewer: React.FC = () => {
                             {/* Anatomy debug overlay — Ctrl+Shift+D to toggle */}
                             {isVolume35 && <AnatomyDebugOverlay />}
 
+                            {/* ── Registration Group: ONLY contains the CT volume ──
+                                All other probe-following elements (slice plane, overlays)
+                                live at the anatomical-subject level to avoid double-transforms. */}
                             <group
                                 name="registration-group"
                                 position={[
@@ -1186,19 +1359,23 @@ export const VolumeViewer: React.FC = () => {
                                         volumeOpacity={visualizationSettings.volumeOpacity}
                                     />
                                 )}
-
-                                {visualizationSettings.showSlicePlane && (
-                                    <SlicePlane3D planeSizeMm={planeSizeMm} scale={scale} currentFrame={currentFrame} />
-                                )}
-
-                                {isVolume35 && (
-                                    <Volume35TorsoOverlays
-                                        mode={visualizationSettings.mode as 'beginner' | 'intermediate' | 'advanced'}
-                                        scale={scale}
-                                        probePos={probePos}
-                                    />
-                                )}
                             </group>
+
+                            {/* Slice plane follows the PROBE (anatomical-subject space),
+                                NOT the CT registration offset. */}
+                            {visualizationSettings.showSlicePlane && (
+                                <SlicePlane3D planeSizeMm={planeSizeMm} scale={scale} currentFrame={currentFrame} />
+                            )}
+
+                            {/* Torso overlays (scan zones, beginner hints) are positioned
+                                relative to the torso anatomy, not the CT registration. */}
+                            {isVolume35 && (
+                                <Volume35TorsoOverlays
+                                    mode={visualizationSettings.mode as 'beginner' | 'intermediate' | 'advanced'}
+                                    scale={scale}
+                                    probePos={probePos}
+                                />
+                            )}
 
                             {/* DragController lives at anatomical-subject level, NOT inside
                                 registration-group. This ensures probe raycasting uses the
