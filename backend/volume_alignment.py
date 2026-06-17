@@ -16,11 +16,10 @@ Pipeline:
 
 import numpy as np
 from pathlib import Path
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, Any
 import json
 import nibabel as nib
 from scipy.ndimage import affine_transform
-from sklearn.preprocessing import StandardScaler
 
 
 class AffineAlignment:
@@ -49,7 +48,7 @@ class AffineAlignment:
             affine: 4x4 affine matrix (voxel to mm)
             metadata: dict with spacing, shape, etc.
         """
-        img = nib.load(nifti_path)
+        img: Any = nib.load(nifti_path)
         volume = np.asarray(img.dataobj)
         affine = img.affine
         
@@ -98,7 +97,7 @@ class AffineAlignment:
         self,
         volume: np.ndarray,
         original_affine: np.ndarray,
-        target_spacing: Tuple[float, float, float] = None,
+        target_spacing: Optional[Tuple[float, float, float]] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Resample volume to target spacing.
@@ -282,7 +281,7 @@ def batch_register_volumes(
             print(f"Template loaded: {template_case_id}")
             break
     
-    if template_volume is None:
+    if template_volume is None or template_affine is None:
         raise ValueError(f"Template case {template_case_id} not found")
     
     # Register all other cases

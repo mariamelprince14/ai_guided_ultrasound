@@ -1364,7 +1364,7 @@ export const VolumeViewer: React.FC = () => {
                             {/* Slice plane follows the PROBE (anatomical-subject space),
                                 NOT the CT registration offset. */}
                             {visualizationSettings.showSlicePlane && (
-                                <SlicePlane3D planeSizeMm={planeSizeMm} scale={scale} currentFrame={currentFrame} />
+                                <SlicePlane3D planeSizeMm={planeSizeMm} scale={scale} currentFrame={null} />
                             )}
 
                             {/* Torso overlays (scan zones, beginner hints) are positioned

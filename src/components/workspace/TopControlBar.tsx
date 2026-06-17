@@ -5,10 +5,11 @@
  * with a minimal, simulator-grade dropdown and toggle interface.
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore } from '@store/useAppStore';
-import { ChevronDown, Eye, HelpCircle, Settings, RefreshCw, Camera } from 'lucide-react';
+import { ChevronDown, Eye, HelpCircle, Settings, RefreshCw, Camera, Smartphone, X } from 'lucide-react';
 import { wsService } from '@services/websocket';
+import { apiService } from '@services/api';
 import styles from './TopControlBar.module.css';
 
 export const TopControlBar: React.FC = () => {
@@ -26,6 +27,23 @@ export const TopControlBar: React.FC = () => {
     } = useAppStore();
 
     const [captureLoading, setCaptureLoading] = React.useState(false);
+    const [showPhoneModal, setShowPhoneModal] = useState(false);
+    const sessionId = useAppStore((s) => s.sessionId);
+    const [lanIp, setLanIp] = useState<string>('');
+
+    useEffect(() => {
+        if (showPhoneModal) {
+            apiService.getNetworkInfo()
+                .then(info => {
+                    if (info && info.lanIp) {
+                        setLanIp(info.lanIp);
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to fetch network info:', err);
+                });
+        }
+    }, [showPhoneModal]);
 
     const modes = [
         { id: 'beginner', label: 'Beginner Training', desc: 'Full anatomical guidance' },
@@ -130,6 +148,55 @@ export const TopControlBar: React.FC = () => {
                 <button className={styles.actionIconBtn} title="Simulator Settings">
                     <Settings size={18} />
                 </button>
+
+                <button
+                    className={`${styles.toggleBtn} ${styles.phoneBtn}`}
+                    onClick={() => setShowPhoneModal(true)}
+                    title="Connect Phone as Probe"
+                >
+                    <Smartphone size={16} />
+                    <span>Phone</span>
+                </button>
+            </div>
+
+            {/* Phone QR Modal */}
+            {showPhoneModal && (
+                <div className={styles.phoneModalOverlay} onClick={() => setShowPhoneModal(false)}>
+                    <div className={styles.phoneModal} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.phoneModalHeader}>
+                            <h3>📱 Connect Phone as Probe</h3>
+                            <button className={styles.phoneModalClose} onClick={() => setShowPhoneModal(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className={styles.phoneModalBody}>
+                            <p className={styles.phoneModalDesc}>
+                                Scan this QR code with your phone to use it as a physical probe controller.
+                            </p>
+                            {sessionId && (
+                                <>
+                                    <img
+                                        className={styles.qrCode}
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                                            `http://${lanIp || window.location.hostname}:8000/phone/phone_controller.html?session=${sessionId}`
+                                        )}`}
+                                        alt="QR Code"
+                                        width={200}
+                                        height={200}
+                                    />
+                                    <div className={styles.sessionIdDisplay}>
+                                        <span className={styles.sessionLabel}>Session ID</span>
+                                        <code className={styles.sessionCode}>{sessionId}</code>
+                                    </div>
+                                    <p className={styles.phoneModalHint}>
+                                        Make sure your phone is on the same WiFi network.
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
             </div>
         </div>
     );

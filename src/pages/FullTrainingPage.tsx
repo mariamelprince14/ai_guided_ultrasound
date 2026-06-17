@@ -54,7 +54,13 @@ export const FullTrainingPage: React.FC = () => {
         const unsubscribeMsg = wsService.onMessage((message: WSMessage) => {
             switch (message.type) {
                 case 'ultrasoundFrame':
-                    updateFrame(message.data.image);
+                case 'rawUltrasoundFrame':
+                    updateFrame(
+                        message.data.image,
+                        message.data.sliceIdx != null
+                            ? { sliceIdx: message.data.sliceIdx, maxSlices: message.data.maxSlices }
+                            : undefined
+                    );
                     break;
                 case 'sessionEvent':
                     if (message.data.event === 'started') setSessionStatus('running');

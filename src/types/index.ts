@@ -227,6 +227,9 @@ export interface UltrasoundFrameMessage {
     data: {
         image: string; // base64 encoded PNG
         timestamp: number;
+        sliceIdx?: number;
+        maxSlices?: number;
+        voxelCoords?: [number, number, number];
     };
 }
 
@@ -259,8 +262,20 @@ export interface CaptureResultMessage {
     };
 }
 
+export interface RawUltrasoundFrameMessage {
+    type: 'rawUltrasoundFrame';
+    data: {
+        image: string; // base64 encoded PNG
+        timestamp: number;
+        sliceIdx?: number;
+        maxSlices?: number;
+        voxelCoords?: [number, number, number];
+    };
+}
+
 export type WSMessage =
     | UltrasoundFrameMessage
+    | RawUltrasoundFrameMessage
     | AIFeedbackMessage
     | PoseUpdateMessage
     | SessionEventMessage

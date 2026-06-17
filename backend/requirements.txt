@@ -7,3 +7,8 @@ Pillow==11.0.0
 python-multipart==0.0.20
 pynrrd==1.1.1
 python-dotenv==1.0.1
+
+# ── Deep Learning Simulator Dependencies ──
+torch>=2.4.0
+torchvision>=0.19.0
+opencv-python-headless>=4.9.0.80
