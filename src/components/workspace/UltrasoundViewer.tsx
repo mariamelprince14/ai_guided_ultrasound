@@ -21,7 +21,7 @@ interface UltrasoundViewerProps {
 }
 
 export const UltrasoundViewer: React.FC<UltrasoundViewerProps> = ({ imageSrc }) => {
-    const { sessionId, status, setSessionStatus, currentFrame } = useAppStore();
+    const { sessionId, status, setSessionStatus, currentFrame, sliceInfo } = useAppStore();
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -36,7 +36,9 @@ export const UltrasoundViewer: React.FC<UltrasoundViewerProps> = ({ imageSrc }) 
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 };
-                img.src = imageSrc ? imageSrc : `data:image/jpeg;base64,${frameToRender}`;
+                // Backend sends full data URIs (data:image/png;base64,...).
+                // Use as-is if it already contains the data: prefix.
+                img.src = frameToRender.startsWith('data:') ? frameToRender : `data:image/png;base64,${frameToRender}`;
             }
         }
     }, [currentFrame, imageSrc]);
@@ -97,6 +99,21 @@ export const UltrasoundViewer: React.FC<UltrasoundViewerProps> = ({ imageSrc }) 
                     <div className={styles.depthIndicator}>
                         10
                     </div>
+
+                    {/* Real-time slice index indicator */}
+                    {sliceInfo && (
+                        <div className={styles.sliceIndicator}>
+                            <span className={styles.sliceLabel}>SLICE</span>
+                            <span className={styles.sliceValue}>{sliceInfo.sliceIdx}</span>
+                            <span className={styles.sliceMax}>/ {sliceInfo.maxSlices}</span>
+                            <div className={styles.sliceBar}>
+                                <div
+                                    className={styles.sliceBarFill}
+                                    style={{ width: `${(sliceInfo.sliceIdx / sliceInfo.maxSlices) * 100}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -49,6 +49,11 @@ class ApiService {
         }
     }
 
+    /** Fetch server network info (specifically LAN IP for mobile connection) */
+    async getNetworkInfo(): Promise<{ lanIp: string; backendPort: number }> {
+        return this.request<{ lanIp: string; backendPort: number }>('/api/network-info');
+    }
+
     /** Fetch all available CT cases from the backend */
     async getCases(): Promise<{ cases: CaseInfo[] }> {
         return this.request<{ cases: CaseInfo[] }>('/api/cases');

@@ -206,3 +206,176 @@
     transform: translateY(-1px);
     box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
 }
+
+/* --- Phone Probe Button --- */
+.phoneBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    height: 30px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.15));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 4px;
+    color: #a78bfa;
+    font-size: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.phoneBtn:hover {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(59, 130, 246, 0.25));
+    border-color: rgba(139, 92, 246, 0.5);
+    color: #c4b5fd;
+    transform: translateY(-1px);
+}
+
+/* --- Phone QR Modal --- */
+.phoneOverlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: phoneFadeIn 0.2s ease-out;
+}
+
+@keyframes phoneFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.phoneModal {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    width: 380px;
+    max-width: 90vw;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    animation: phoneSlideUp 0.3s ease-out;
+}
+
+@keyframes phoneSlideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.phoneModalHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.phoneModalHead h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0;
+}
+
+.phoneCloseBtn {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.phoneCloseBtn:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.phoneModalContent {
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.phoneDesc {
+    font-size: 13px;
+    color: #94a3b8;
+    text-align: center;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.qrImg {
+    border-radius: 12px;
+    padding: 16px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sessionDisplay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.sessionLbl {
+    font-size: 9px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.25);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.sessionCopyContainer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 6px 2px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sessionCode {
+    font-size: 10px;
+    color: #60a5fa;
+    background: transparent;
+    padding: 4px 0;
+    border-radius: 0;
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    word-break: break-all;
+    text-align: center;
+    max-width: 250px;
+}
+
+.copyBtn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.copyBtn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.copyBtn:active {
+    transform: scale(0.9);
+}

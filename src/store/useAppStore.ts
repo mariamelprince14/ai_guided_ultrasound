@@ -65,7 +65,8 @@ interface AppState extends SessionState {
     updatePose: (pose: ProbePose) => void;
     updateImagingSettings: (settings: Partial<ImagingSettings>) => void;
     updateRenderSettings: (settings: Partial<RenderSettings>) => void;
-    updateFrame: (frame: string) => void;
+    updateFrame: (frame: string, sliceInfo?: { sliceIdx: number; maxSlices: number }) => void;
+    sliceInfo: { sliceIdx: number; maxSlices: number } | null;
     updateFeedback: (feedback: AIFeedback) => void;
 
     // Snapshots
@@ -423,7 +424,9 @@ export const useAppStore = create<AppState>((set) => ({
             renderSettings: { ...state.renderSettings, ...updates },
         })),
 
-    updateFrame: (frame) => set({ currentFrame: frame }),
+    sliceInfo: null,
+
+    updateFrame: (frame, sliceInfo) => set({ currentFrame: frame, ...(sliceInfo ? { sliceInfo } : {}) }),
 
     updateFeedback: (feedback) =>
         set((state) => ({

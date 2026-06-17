@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Zap,
     Play,
@@ -9,8 +9,14 @@ import {
     Activity,
     Wifi,
     Settings,
+    Smartphone,
+    X,
+    Copy,
+    Check,
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useAppStore } from '@store/useAppStore';
+import { apiService } from '@services/api';
 import styles from './SimulatorHeader.module.css';
 
 export const SimulatorHeader: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSidebar }) => {
@@ -25,6 +31,36 @@ export const SimulatorHeader: React.FC<{ onToggleSidebar: () => void }> = ({ onT
 
     const handlePlayPause = () => {
         setSessionStatus(status === 'paused' ? 'running' : 'paused');
+    };
+
+    const [showPhoneModal, setShowPhoneModal] = useState(false);
+    const sessionId = useAppStore((s) => s.sessionId);
+    const [lanIp, setLanIp] = useState<string>('');
+    const [tunnelUrl, setTunnelUrl] = useState<string>('');
+
+    useEffect(() => {
+        if (showPhoneModal) {
+            apiService.getNetworkInfo()
+                .then(info => {
+                    if (info) {
+                        if (info.lanIp) setLanIp(info.lanIp);
+                        if (info.tunnelUrl) setTunnelUrl(info.tunnelUrl);
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to fetch network info:', err);
+                });
+        }
+    }, [showPhoneModal]);
+
+    const [copied, setCopied] = useState(false);
+
+    const handleCopySessionCode = () => {
+        if (sessionId) {
+            navigator.clipboard.writeText(sessionId);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
     };
 
     const handleResetView = () => {
@@ -105,12 +141,64 @@ export const SimulatorHeader: React.FC<{ onToggleSidebar: () => void }> = ({ onT
                         <span>IMAGE PARAMS</span>
                         <ChevronDown size={12} />
                     </button>
+                    <button className={styles.phoneBtn} onClick={() => setShowPhoneModal(true)} title="Connect Phone as Probe">
+                        <Smartphone size={14} />
+                        <span>PHONE</span>
+                    </button>
                     <button className={styles.stopButton} onClick={handleEndSession}>
                         <Zap size={14} fill="#f87171" />
                         <span>END SESSION</span>
                     </button>
                 </div>
             </div>
+
+            {/* Phone QR Code Modal */}
+            {showPhoneModal && (
+                <div className={styles.phoneOverlay} onClick={() => setShowPhoneModal(false)}>
+                    <div className={styles.phoneModal} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.phoneModalHead}>
+                            <h3>📱 Connect Phone as Probe</h3>
+                            <button className={styles.phoneCloseBtn} onClick={() => setShowPhoneModal(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className={styles.phoneModalContent}>
+                            <p className={styles.phoneDesc}>
+                                Scan this QR code with your phone to use it as a physical probe controller.
+                                Make sure your phone is on the same WiFi network.
+                            </p>
+                            {sessionId ? (
+                                <>
+                                    <div className={styles.qrImg}>
+                                        <QRCodeSVG
+                                            value={tunnelUrl ? `${tunnelUrl}/phone/phone_controller.html?session=${sessionId}` : `http://${lanIp || window.location.hostname}:8000/phone/phone_controller.html?session=${sessionId}`}
+                                            size={200}
+                                            bgColor="#ffffff"
+                                            fgColor="#0f172a"
+                                            level="M"
+                                        />
+                                    </div>
+                                    <div className={styles.sessionDisplay}>
+                                        <span className={styles.sessionLbl}>Session ID</span>
+                                        <div className={styles.sessionCopyContainer}>
+                                            <code className={styles.sessionCode}>{sessionId}</code>
+                                            <button 
+                                                className={styles.copyBtn} 
+                                                onClick={handleCopySessionCode}
+                                                title="Copy Session ID"
+                                            >
+                                                {copied ? <Check size={14} /> : <Copy size={14} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <p className={styles.phoneDesc}>No active session. Start a session first.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </header>
     );
 };

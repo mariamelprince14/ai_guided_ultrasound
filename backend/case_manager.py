@@ -26,7 +26,11 @@ logger = logging.getLogger(__name__)
 
 # ── Dataset root ─────────────────────────────────────────────────────────────
 # Absolute path to the folder containing all case sub-directories
-DATASET_ROOT = Path(r"E:\downloads\usdemo\ct.volumes\3d test")
+DOWNLOADS_ROOT = Path.home() / "Downloads" / "3d test"
+if DOWNLOADS_ROOT.exists():
+    DATASET_ROOT = DOWNLOADS_ROOT
+else:
+    DATASET_ROOT = Path(__file__).parent / "3d test"
 
 # LRU cache size: how many volumes to keep in memory simultaneously
 CACHE_SIZE = 3
