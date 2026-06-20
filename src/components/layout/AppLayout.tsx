@@ -11,11 +11,20 @@ interface AppLayoutProps {
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     const location = useLocation();
     const isTrainingRoute = location.pathname.startsWith('/training') || location.pathname === '/workspace';
+    const isHomepage = location.pathname === '/';
 
     if (isTrainingRoute) {
         return (
             <div className={styles.fullScreenLayout}>
                 <main className={styles.fullScreenContent}>{children}</main>
+            </div>
+        );
+    }
+
+    if (isHomepage) {
+        return (
+            <div className={styles.homepageLayout}>
+                <main className={styles.homepageContent}>{children}</main>
             </div>
         );
     }

@@ -4,8 +4,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(10, 20, 40, 0.4);
-    backdrop-filter: var(--glass-blur);
+    background-color: rgba(5, 10, 25, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -14,11 +15,15 @@
 }
 
 .modal {
-    background-color: var(--color-bg-elevated);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-xl);
-    max-width: 500px;
-    width: 90%;
+    background: linear-gradient(135deg, rgba(12, 28, 65, 0.95) 0%, rgba(8, 18, 45, 0.92) 100%);
+    border: 1px solid rgba(61, 134, 204, 0.35);
+    border-radius: var(--radius-2xl);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.06),
+        0 25px 60px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(61, 134, 204, 0.08);
+    max-width: 520px;
+    width: 92%;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
@@ -31,23 +36,24 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--spacing-lg);
-    border-bottom: 1px solid var(--color-border-light);
+    border-bottom: 1px solid rgba(61, 134, 204, 0.15);
 }
 
 .title {
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
-    color: var(--color-primary-800);
+    color: rgba(220, 235, 255, 0.95);
     margin: 0;
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
+    font-family: var(--font-family-display);
 }
 
 .closeButton {
-    background: none;
-    border: none;
-    color: var(--color-text-tertiary);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(150, 180, 220, 0.7);
     cursor: pointer;
     padding: 0;
     width: 32px;
@@ -60,7 +66,8 @@
 }
 
 .closeButton:hover {
-    background-color: var(--color-error);
+    background-color: rgba(220, 50, 50, 0.8);
+    border-color: transparent;
     color: white;
 }
 
@@ -72,20 +79,15 @@
 
 .footer {
     padding: var(--spacing-lg);
-    border-top: 1px solid var(--color-border-light);
+    border-top: 1px solid rgba(61, 134, 204, 0.12);
     display: flex;
     gap: var(--spacing-md);
     justify-content: flex-end;
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
 @keyframes slideUp {
@@ -93,9 +95,9 @@
         transform: translateY(20px);
         opacity: 0;
     }
-
     to {
         transform: translateY(0);
         opacity: 1;
     }
 }
+

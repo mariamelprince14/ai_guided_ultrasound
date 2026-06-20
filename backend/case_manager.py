@@ -24,10 +24,12 @@ from volume_loader import (
 
 logger = logging.getLogger(__name__)
 
-# ── Dataset root ─────────────────────────────────────────────────────────────
-# Absolute path to the folder containing all case sub-directories
+PROJECT_CT_VOLUMES = Path(__file__).parent.parent / "ct.volumes" / "3d test"
 DOWNLOADS_ROOT = Path.home() / "Downloads" / "3d test"
-if DOWNLOADS_ROOT.exists():
+
+if PROJECT_CT_VOLUMES.exists():
+    DATASET_ROOT = PROJECT_CT_VOLUMES
+elif DOWNLOADS_ROOT.exists():
     DATASET_ROOT = DOWNLOADS_ROOT
 else:
     DATASET_ROOT = Path(__file__).parent / "3d test"
@@ -139,8 +141,8 @@ def initialize(dataset_root: Path = DATASET_ROOT) -> None:
 
 
 def list_cases() -> list[dict]:
-    """Return all discovered cases as JSON-serializable dicts."""
-    return [c.to_dict() for c in _cases_by_id.values()]
+    """Return all discovered cases as JSON-serializable dicts (only valid ones)."""
+    return [c.to_dict() for c in _cases_by_id.values() if c.is_valid]
 
 
 def get_case_info(case_id: str) -> Optional[CaseInfo]:
@@ -161,6 +163,10 @@ def load_case(case_id: str) -> Optional[VolumeData]:
     info = _cases_by_id.get(case_id)
     if info is None:
         logger.error(f"Case not found: {case_id}")
+        return None
+
+    if not info.is_valid or info.volume_path is None:
+        logger.error(f"Case {case_id} has no valid volume file (.nii.gz)")
         return None
 
     # Evict oldest if at capacity
