@@ -710,12 +710,6 @@ const ContactRing: React.FC<{ scale: number }> = ({ scale }) => {
 // Implementation: DragController captures LEFT clicks for probe; OrbitControls
 // is configured for RIGHT button. When probe drag starts, orbit is disabled.
 // When probe drag ends, orbit re-enables. Alt key bypasses probe capture.
-interface DragControllerProps {
-    volumeBounds: { min: [number, number, number]; max: [number, number, number] };
-    scale: number;
-    selectedCaseId: string;
-    orbitControlsRef: React.RefObject<any>;
-}
 
 // ── Probe Stability Tracker singleton (outside component, persists across renders) ──
 const _stabilityTracker = new ProbeStabilityTracker(90); // 1.5s window at 60fps
@@ -1047,9 +1041,25 @@ const DragController: React.FC<DragControllerProps> = ({ scale, volumeBounds, se
 };
 
 
+// ── Volume35 Transform Updater (runs within R3F Canvas context) ───────────────
+const Volume35TransformUpdater: React.FC<{
+    groupRef: React.RefObject<THREE.Group | null>;
+    isVolume35: boolean;
+}> = ({ groupRef, isVolume35 }) => {
+    useFrame(() => {
+        if (isVolume35 && groupRef.current) {
+            groupRef.current.matrixAutoUpdate = true;
+            groupRef.current.updateMatrix();
+            groupRef.current.updateMatrixWorld(true);
+        }
+    });
+    return null;
+};
+
 // ── Main VolumeViewer component ───────────────────────────────────────────────
 export const VolumeViewer: React.FC = () => {
     const controlsRef = useRef<any>(null);
+    const volume35GroupRef = useRef<THREE.Group>(null);
     const {
         volumeInfo,
         volumeVoxelData,
@@ -1069,9 +1079,18 @@ export const VolumeViewer: React.FC = () => {
         probePhysics,
         contactQuality,
         imagingSettings,
+        volume35ScaleBoost,
+        volume35OffsetX,
+        volume35OffsetY,
+        volume35OffsetZ,
+        setVolume35ScaleBoost,
+        setVolume35OffsetX,
+        setVolume35OffsetY,
+        setVolume35OffsetZ,
     } = useAppStore();
 
     const isVolume35 = isVolume35Case(selectedCaseId);
+    console.log('[VolumeViewer Debug] selectedCaseId:', selectedCaseId, 'isVolume35:', isVolume35, 'registration:', registration);
     const bounds = React.useMemo(() => volumeInfo?.bounds ? {
         ...volumeInfo.bounds,
         size: [
@@ -1274,6 +1293,9 @@ export const VolumeViewer: React.FC = () => {
         <div className={styles.container}>
             {/* Interaction hint */}
             <div className={styles.hintBadge}>
+                <span style={{ color: '#38bdf8', fontWeight: 800, marginRight: '12px' }}>
+                    CASE: {selectedCaseId || 'NULL'} (VOL35: {isVolume35 ? 'YES' : 'NO'})
+                </span>
                 <span>{getHintText()}</span>
                 <button className={styles.resetBtn} onClick={handleResetView}>Reset</button>
             </div>
@@ -1334,7 +1356,8 @@ export const VolumeViewer: React.FC = () => {
                                 All other probe-following elements (slice plane, overlays)
                                 live at the anatomical-subject level to avoid double-transforms. */}
                             <group
-                                name="registration-group"
+                                ref={volume35GroupRef}
+                                name={isVolume35 ? "Volume35" : "registration-group"}
                                 position={[
                                     registration.position[0],
                                     registration.position[1],
@@ -1347,6 +1370,7 @@ export const VolumeViewer: React.FC = () => {
                                 ]}
                                 scale={[registration.scale, registration.scale, registration.scale]}
                             >
+                                <Volume35TransformUpdater groupRef={volume35GroupRef} isVolume35={isVolume35} />
                                 {volumeVoxelData && (visualizationSettings.showVolume || visualizationSettings.mode === 'beginner') && (
                                     <VolumeRaymarch
                                         voxelData={volumeVoxelData}
@@ -1486,6 +1510,76 @@ export const VolumeViewer: React.FC = () => {
                         </button>
                     </div>
                 </div>
+
+                {isVolume35 && (
+                    <div className={styles.volume35TunerPanel}>
+                        <div className={styles.tunerHeader}>
+                            <span className={styles.tunerTitle}>Volume 35 Tuner</span>
+                        </div>
+                        <div className={styles.tunerContent}>
+                            <div className={styles.tunerRow}>
+                                <div className={styles.tunerLabelRow}>
+                                    <span className={styles.tunerLabel}>Scale Boost</span>
+                                    <span className={styles.tunerVal}>{volume35ScaleBoost.toFixed(2)}x</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    className={styles.tunerSlider}
+                                    min="1.0"
+                                    max="3.0"
+                                    step="0.05"
+                                    value={volume35ScaleBoost}
+                                    onChange={(e) => setVolume35ScaleBoost(parseFloat(e.target.value))}
+                                />
+                            </div>
+                            <div className={styles.tunerRow}>
+                                <div className={styles.tunerLabelRow}>
+                                    <span className={styles.tunerLabel}>Offset X (L/R)</span>
+                                    <span className={styles.tunerVal}>{volume35OffsetX.toFixed(3)}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    className={styles.tunerSlider}
+                                    min="-0.2"
+                                    max="0.2"
+                                    step="0.005"
+                                    value={volume35OffsetX}
+                                    onChange={(e) => setVolume35OffsetX(parseFloat(e.target.value))}
+                                />
+                            </div>
+                            <div className={styles.tunerRow}>
+                                <div className={styles.tunerLabelRow}>
+                                    <span className={styles.tunerLabel}>Offset Y (S/I)</span>
+                                    <span className={styles.tunerVal}>{volume35OffsetY.toFixed(3)}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    className={styles.tunerSlider}
+                                    min="-0.2"
+                                    max="0.2"
+                                    step="0.005"
+                                    value={volume35OffsetY}
+                                    onChange={(e) => setVolume35OffsetY(parseFloat(e.target.value))}
+                                />
+                            </div>
+                            <div className={styles.tunerRow}>
+                                <div className={styles.tunerLabelRow}>
+                                    <span className={styles.tunerLabel}>Offset Z (A/P)</span>
+                                    <span className={styles.tunerVal}>{volume35OffsetZ.toFixed(3)}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    className={styles.tunerSlider}
+                                    min="-0.2"
+                                    max="0.2"
+                                    step="0.005"
+                                    value={volume35OffsetZ}
+                                    onChange={(e) => setVolume35OffsetZ(parseFloat(e.target.value))}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

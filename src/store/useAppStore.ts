@@ -139,6 +139,16 @@ interface AppState extends SessionState {
     mmToSceneScale: number;
     setMmToSceneScale: (scale: number) => void;
 
+    // Volume 35 Overrides
+    volume35ScaleBoost: number;
+    volume35OffsetX: number;
+    volume35OffsetY: number;
+    volume35OffsetZ: number;
+    setVolume35ScaleBoost: (val: number) => void;
+    setVolume35OffsetX: (val: number) => void;
+    setVolume35OffsetY: (val: number) => void;
+    setVolume35OffsetZ: (val: number) => void;
+
     // Reset
     resetSession: () => void;
 }
@@ -254,6 +264,64 @@ export const useAppStore = create<AppState>((set) => ({
     mmToSceneScale: 0.04, // Default estimate (400mm torso -> 16 units)
     setMmToSceneScale: (scale) => set({ mmToSceneScale: scale }),
 
+    // Volume 35 Overrides (Defaults tuned to make internal organs look significantly larger and contained)
+    volume35ScaleBoost: 1.85,
+    volume35OffsetX: 0.0,
+    volume35OffsetY: -0.055,
+    volume35OffsetZ: 0.045,
+    setVolume35ScaleBoost: (val) => set((state) => {
+        const mmToScene = VOLUME35_MM_TO_SCENE;
+        if (!state.torsoBounds || !state.anatomyMetadata) {
+            return { volume35ScaleBoost: val };
+        }
+        const result = computeAnatomicalTransform(state.anatomyMetadata, state.torsoBounds, mmToScene);
+        const finalRegistration = { ...result.registration, rotation: [0, 0, 0] as [number, number, number] };
+        finalRegistration.scale *= val;
+        finalRegistration.position[0] += state.volume35OffsetX;
+        finalRegistration.position[1] += state.volume35OffsetY;
+        finalRegistration.position[2] += state.volume35OffsetZ;
+        return { volume35ScaleBoost: val, registration: finalRegistration };
+    }),
+    setVolume35OffsetX: (val) => set((state) => {
+        const mmToScene = VOLUME35_MM_TO_SCENE;
+        if (!state.torsoBounds || !state.anatomyMetadata) {
+            return { volume35OffsetX: val };
+        }
+        const result = computeAnatomicalTransform(state.anatomyMetadata, state.torsoBounds, mmToScene);
+        const finalRegistration = { ...result.registration, rotation: [0, 0, 0] as [number, number, number] };
+        finalRegistration.scale *= state.volume35ScaleBoost;
+        finalRegistration.position[0] += val;
+        finalRegistration.position[1] += state.volume35OffsetY;
+        finalRegistration.position[2] += state.volume35OffsetZ;
+        return { volume35OffsetX: val, registration: finalRegistration };
+    }),
+    setVolume35OffsetY: (val) => set((state) => {
+        const mmToScene = VOLUME35_MM_TO_SCENE;
+        if (!state.torsoBounds || !state.anatomyMetadata) {
+            return { volume35OffsetY: val };
+        }
+        const result = computeAnatomicalTransform(state.anatomyMetadata, state.torsoBounds, mmToScene);
+        const finalRegistration = { ...result.registration, rotation: [0, 0, 0] as [number, number, number] };
+        finalRegistration.scale *= state.volume35ScaleBoost;
+        finalRegistration.position[0] += state.volume35OffsetX;
+        finalRegistration.position[1] += val;
+        finalRegistration.position[2] += state.volume35OffsetZ;
+        return { volume35OffsetY: val, registration: finalRegistration };
+    }),
+    setVolume35OffsetZ: (val) => set((state) => {
+        const mmToScene = VOLUME35_MM_TO_SCENE;
+        if (!state.torsoBounds || !state.anatomyMetadata) {
+            return { volume35OffsetZ: val };
+        }
+        const result = computeAnatomicalTransform(state.anatomyMetadata, state.torsoBounds, mmToScene);
+        const finalRegistration = { ...result.registration, rotation: [0, 0, 0] as [number, number, number] };
+        finalRegistration.scale *= state.volume35ScaleBoost;
+        finalRegistration.position[0] += state.volume35OffsetX;
+        finalRegistration.position[1] += state.volume35OffsetY;
+        finalRegistration.position[2] += val;
+        return { volume35OffsetZ: val, registration: finalRegistration };
+    }),
+
     // Probe metrics — initial values at rest
     contactQuality: 0,
     contactQualityLabel: 'poor' as ContactLabel,
@@ -333,14 +401,21 @@ export const useAppStore = create<AppState>((set) => ({
             result.warnings.forEach(w => console.warn('[embedCTAnatomically]', w));
         }
 
+        const isVolume35 = state.selectedCaseId === 'test35';
+        const finalRegistration = {
+            ...result.registration,
+            rotation: [0, 0, 0] as [number, number, number],
+        };
+
+        if (isVolume35) {
+            finalRegistration.scale *= state.volume35ScaleBoost;
+            finalRegistration.position[0] += state.volume35OffsetX;
+            finalRegistration.position[1] += state.volume35OffsetY;
+            finalRegistration.position[2] += state.volume35OffsetZ;
+        }
+
         return {
-            registration: {
-                ...result.registration,
-                // Always lock rotation to [0,0,0] — NIfTI orientation is handled by the
-                // anatomical-subject group rotation and the VolumeRaymarch axis-swap mesh.
-                // Any stale rotation from localStorage is intentionally discarded here.
-                rotation: [0, 0, 0] as [number, number, number],
-            },
+            registration: finalRegistration,
             mmToSceneScale: mmToScene,
         };
     }),
@@ -554,13 +629,26 @@ export const useAppStore = create<AppState>((set) => ({
                     const pos: [number, number, number] = [matrix[0][3], matrix[1][3], matrix[2][3]];
                     
                     // Update registration to use precomputed offset
-                    set((state) => ({
-                        registration: {
-                            ...state.registration,
-                            position: pos,
-                            scale: 1.0 // Assume alignment standardized scaling
+                    set((state) => {
+                        const isVolume35 = caseId === 'test35';
+                        let finalScale = 1.0;
+                        const finalPos: [number, number, number] = [...pos];
+
+                        if (isVolume35) {
+                            finalScale *= state.volume35ScaleBoost;
+                            finalPos[0] += state.volume35OffsetX;
+                            finalPos[1] += state.volume35OffsetY;
+                            finalPos[2] += state.volume35OffsetZ;
                         }
-                    }));
+
+                        return {
+                            registration: {
+                                ...state.registration,
+                                position: finalPos,
+                                scale: finalScale
+                            }
+                        };
+                    });
                 }
             } else {
                 set({ volumeAlignment: null });

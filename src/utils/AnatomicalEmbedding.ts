@@ -58,7 +58,7 @@ export const CAVITY_MARGINS = {
     xFraction: 0.08,         // shrink 8% per side left-right — narrower margin preserves organ width
     yTopFraction: 0.05,      // shrink 5% from superior end (just below shoulder-neck transition)
     yBottomFraction: 0.05,   // shrink 5% from inferior end (just above pelvis brim)
-    zFraction: 0.10,         // shrink 10% per side anterior-posterior — retroperitoneal organs are deep
+    zFraction: 0.05,         // shrink 5% per side anterior-posterior (reduced from 10% — organs need depth room)
 } as const;
 
 /**
@@ -73,16 +73,26 @@ export const CAVITY_MARGINS = {
  */
 export const ANATOMICAL_OFFSETS = {
     yFraction: -0.03,   // shift 3% inferior — small nudge so mid-kidney aligns with L2
-    zFraction: -0.10,   // shift 10% posterior from cavity center (retroperitoneal placement)
+    zFraction: -0.05,   // shift 5% posterior from cavity center (reduced from 10% — less aggressive posterior push)
 } as const;
 
 /**
  * Scale reduction factor applied to the fitted scale.
  * Provides a safe margin so anatomy never clips the torso skin.
- * Raised from 0.85 → 0.92 so the CT volume fills the abdominal cavity
- * realistically instead of floating shrunken inside it.
+ * Raised from 0.85 → 0.92 → 0.95 so the CT volume fills the abdominal cavity
+ * realistically. The ray-march shader makes air/table transparent, so slight
+ * overflow in depth is invisible and preferable to undersized organs.
  */
-export const SCALE_SAFETY_MARGIN = 0.92;
+export const SCALE_SAFETY_MARGIN = 0.95;
+
+/**
+ * Maximum allowed AP (depth) overflow ratio before applying a soft clamp.
+ * CT scanner FOV is circular (~350mm) while the torso is only ~200mm deep,
+ * so the raw AP extent always exceeds the torso. Since air outside the body
+ * is transparent in the ray-march renderer, we allow up to 40% overflow
+ * before gently constraining the scale.
+ */
+export const AP_OVERFLOW_TOLERANCE = 1.40;
 
 // ── AnatomicalLandmarkRegistry ────────────────────────────────────────────────
 
@@ -318,23 +328,45 @@ export function computeAnatomicalTransform(
 
     // 5. Compute uniform scale factor.
     //
-    // STRATEGY: Fit the CT volume to the FULL torso bounding box using ALL THREE axes
-    // as constraints. Previously, only X (L-R) and Y (S-I) were used, which allowed
-    // the CT's Z (A-P) dimension to silently overflow the torso depth — making the
-    // volume appear to float/clip outside the body in the anterior-posterior direction.
+    // STRATEGY: PRIMARY FIT uses L-R (width) and S-I (height) axes only.
+    // These represent actual body contour boundaries. The AP (depth) axis
+    // from the CT scanner FOV (~350mm circle) is much larger than the real
+    // torso depth (~200mm) because it includes air and table. Since the
+    // ray-march shader renders this air as transparent, forcing the CT
+    // volume to fit the AP axis makes organs appear unrealistically small.
     //
-    // The CT scanner FOV (≈350mm circle) is WIDER than the actual body depth (≈200mm),
-    // so the AP extent of a raw CT is almost always larger than the torso mesh depth.
-    // Adding the Z constraint ensures the CT box always sits INSIDE the torso shell.
+    // SOFT AP CLAMP: If the primary scale would cause the AP dimension to
+    // exceed the torso depth by more than AP_OVERFLOW_TOLERANCE (40%),
+    // we blend in a secondary constraint to prevent extreme overflow.
     const torsoWidth  = torsoBounds.size[0];  // full L-R torso extent
     const torsoHeight = torsoBounds.size[1];  // full S-I torso extent
-    const torsoDepth  = torsoBounds.size[2];  // full A-P torso extent ← CRITICAL
+    const torsoDepth  = torsoBounds.size[2];  // full A-P torso extent
 
-    const rawScale = Math.min(
+    // Primary scale: fit L-R and S-I only (anatomically meaningful axes)
+    const primaryScale = Math.min(
         torsoWidth  / ctWidthScene,   // L-R fit
         torsoHeight / ctHeightScene,  // S-I fit
-        torsoDepth  / ctDepthScene    // A-P fit ← prevents Z overflow outside torso
     );
+
+    // Check if the primary scale causes excessive AP overflow
+    const apExtentAtPrimaryScale = ctDepthScene * primaryScale;
+    const apOverflowRatio = apExtentAtPrimaryScale / torsoDepth;
+
+    let rawScale: number;
+    if (apOverflowRatio > AP_OVERFLOW_TOLERANCE) {
+        // Soft clamp: blend primary scale toward AP-constrained scale
+        // This gently pulls the volume smaller only when AP overflow is extreme
+        const apConstrainedScale = torsoDepth / ctDepthScene;
+        const blendFactor = Math.min(1.0, (apOverflowRatio - AP_OVERFLOW_TOLERANCE) / 0.5);
+        rawScale = primaryScale * (1.0 - blendFactor) + apConstrainedScale * blendFactor;
+        console.info(
+            `[AnatomicalEmbedding] AP soft-clamp active: overflow=${apOverflowRatio.toFixed(2)}x, ` +
+            `blend=${blendFactor.toFixed(2)}, primary=${primaryScale.toFixed(4)}, clamped=${rawScale.toFixed(4)}`
+        );
+    } else {
+        rawScale = primaryScale;
+    }
+
     const scaleFactor = rawScale * SCALE_SAFETY_MARGIN;
 
     // Warn if scale is very different from expected range

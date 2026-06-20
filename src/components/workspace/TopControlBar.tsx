@@ -197,7 +197,6 @@ export const TopControlBar: React.FC = () => {
                     </div>
                 </div>
             )}
-            </div>
         </div>
     );
 };
