@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>USim Probe Controller</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: #0a0e1a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 16px;
+            gap: 12px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.offline {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .status-badge.connected {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-badge.connected .status-dot {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Setup Card */
+        .card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #e2e8f0;
+            font-size: 14px;
+            font-family: 'SF Mono', 'JetBrains Mono', monospace;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus {
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: white;
+        }
+
+        .btn-primary:hover { transform: scale(1.02); }
+        .btn-primary:active { transform: scale(0.98); }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: #94a3b8;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-full { width: 100%; justify-content: center; }
+
+        /* Orientation Display */
+        .orientation-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .orient-item {
+            text-align: center;
+            padding: 12px 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .orient-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .orient-value {
+            font-size: 22px;
+            font-weight: 800;
+            font-family: 'SF Mono', 'JetBrains Mono', monospace;
+        }
+
+        .orient-value.pitch { color: #f87171; }
+        .orient-value.yaw { color: #4ade80; }
+        .orient-value.roll { color: #60a5fa; }
+
+        .orient-unit {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Probe Visual */
+        .probe-visual {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            min-height: 160px;
+        }
+
+        .probe-circle {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: transform 0.1s ease-out;
+        }
+
+        .probe-dot {
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            position: absolute;
+            transition: all 0.1s ease-out;
+        }
+
+        .probe-crosshair {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .probe-crosshair::before,
+        .probe-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .probe-crosshair::before {
+            width: 1px;
+            height: 100%;
+            left: 50%;
+        }
+
+        .probe-crosshair::after {
+            width: 100%;
+            height: 1px;
+            top: 50%;
+        }
+
+        /* Slice Bar */
+        .slice-section {
+            padding: 12px 0;
+        }
+
+        .slice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .slice-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .slice-value {
+            font-size: 14px;
+            font-weight: 800;
+            color: #60a5fa;
+            font-family: 'SF Mono', 'JetBrains Mono', monospace;
+        }
+
+        .slice-bar-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .slice-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            border-radius: 3px;
+            transition: width 0.1s ease-out;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .controls .btn { flex: 1; justify-content: center; }
+
+        .locked-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+
+        .locked-text {
+            font-size: 24px;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.3);
+            text-align: center;
+        }
+
+        .locked-text span {
+            display: block;
+            font-size: 14px;
+            font-weight: 400;
+            margin-top: 8px;
+        }
+
+        /* Permission screen */
+        .permission-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            text-align: center;
+        }
+
+        .permission-icon {
+            font-size: 64px;
+        }
+
+        .permission-title {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .permission-desc {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            max-width: 280px;
+            line-height: 1.5;
+        }
+
+        .error-msg {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #f87171;
+            font-size: 12px;
+            text-align: center;
+            display: none;
+        }
+
+        .fps-counter {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.2);
+            font-family: monospace;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">📱</div>
+                <span class="logo-text">USim Probe</span>
+            </div>
+            <div class="status-badge offline" id="statusBadge">
+                <span class="status-dot"></span>
+                <span id="statusText">OFFLINE</span>
+            </div>
+        </div>
+
+        <!-- Phase 1: Setup -->
+        <div id="setupPhase">
+            <div class="card">
+                <div class="card-title">SESSION</div>
+                <div class="input-group">
+                    <input type="text" id="sessionInput" placeholder="Enter session ID..." />
+                    <button class="btn btn-primary" id="connectBtn" onclick="startConnection()">
+                        Connect
+                    </button>
+                </div>
+            </div>
+
+            <div id="errorMsg" class="error-msg"></div>
+
+            <!-- Permission request (shown on iOS) -->
+            <div class="permission-screen" id="permissionScreen" style="display:none;">
+                <div class="permission-icon">🔄</div>
+                <div class="permission-title">Gyroscope Access Required</div>
+                <div class="permission-desc">
+                    Tap the button below to allow motion sensor access.
+                    This is required for the probe controller to work.
+                </div>
+                <button class="btn btn-primary btn-full" onclick="requestPermission()" style="max-width:280px;">
+                    🔓 Grant Sensor Access
+                </button>
+            </div>
+        </div>
+
+        <!-- Phase 2: Active Controller -->
+        <div id="activePhase" style="display:none; flex:1; display:none; flex-direction:column; gap:12px;">
+            <!-- Orientation -->
+            <div class="card">
+                <div class="card-title">ORIENTATION</div>
+                <div class="orientation-grid">
+                    <div class="orient-item">
+                        <div class="orient-label">PITCH</div>
+                        <div class="orient-value pitch" id="pitchVal">0</div>
+                        <div class="orient-unit">deg</div>
+                    </div>
+                    <div class="orient-item">
+                        <div class="orient-label">YAW</div>
+                        <div class="orient-value yaw" id="yawVal">0</div>
+                        <div class="orient-unit">deg</div>
+                    </div>
+                    <div class="orient-item">
+                        <div class="orient-label">ROLL</div>
+                        <div class="orient-value roll" id="rollVal">0</div>
+                        <div class="orient-unit">deg</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visual probe indicator -->
+            <div class="card" style="flex:1; display:flex; flex-direction:column;">
+                <div class="card-title">PROBE POSITION</div>
+                <div class="probe-visual">
+                    <div class="probe-circle" id="probeCircle">
+                        <div class="probe-crosshair"></div>
+                        <div class="probe-dot" id="probeDot"></div>
+                    </div>
+                </div>
+
+                <!-- Slice position -->
+                <div class="slice-section">
+                    <div class="slice-header">
+                        <span class="slice-label">AXIAL SLICE</span>
+                        <span class="slice-value" id="sliceValue">— / —</span>
+                    </div>
+                    <div class="slice-bar-track">
+                        <div class="slice-bar-fill" id="sliceBar" style="width:50%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="btn btn-secondary" id="calibrateBtn" onclick="calibrate()">
+                    🎯 Calibrate
+                </button>
+                <button class="btn btn-secondary" id="lockBtn" onclick="toggleLock()">
+                    🔓 Lock
+                </button>
+                <button class="btn btn-danger" onclick="disconnect()">
+                    ✕ End
+                </button>
+            </div>
+
+            <div class="fps-counter" id="fpsCounter">0 fps</div>
+        </div>
+
+        <!-- Locked overlay -->
+        <div class="locked-overlay" id="lockedOverlay" style="display:none;" onclick="toggleLock()">
+            <div class="locked-text">
+                🔒 PROBE LOCKED
+                <span>Tap anywhere to unlock</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── State ──────────────────────────────────────────────
+        let ws = null;
+        let isConnected = false;
+        let isLocked = false;
+        let hasPermission = false;
+
+        // Calibration offsets
+        let calAlpha = 0, calBeta = 0, calGamma = 0;
+
+        // Current orientation (raw)
+        let rawAlpha = 0, rawBeta = 0, rawGamma = 0;
+
+        // Throttle: send at ~30fps max
+        let lastSendTime = 0;
+        const SEND_INTERVAL = 33; // ~30fps
+
+        // FPS tracking
+        let frameCount = 0;
+        let lastFpsTime = Date.now();
+
+        // ── Init ──────────────────────────────────────────────
+        window.addEventListener('DOMContentLoaded', () => {
+            // Auto-fill session ID from URL params
+            const params = new URLSearchParams(window.location.search);
+            const sessionParam = params.get('session');
+            if (sessionParam) {
+                document.getElementById('sessionInput').value = sessionParam;
+            }
+
+            // Check if gyroscope is available
+            if (!window.DeviceOrientationEvent) {
+                showError('DeviceOrientation not supported on this browser. Use a mobile device.');
+            }
+
+            // iOS 13+ requires explicit permission
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                document.getElementById('permissionScreen').style.display = 'flex';
+            } else {
+                hasPermission = true;
+            }
+        });
+
+        // ── Permission (iOS) ──────────────────────────────────
+        async function requestPermission() {
+            try {
+                const state = await DeviceOrientationEvent.requestPermission();
+                if (state === 'granted') {
+                    hasPermission = true;
+                    document.getElementById('permissionScreen').style.display = 'none';
+                    showError(''); // clear
+                } else {
+                    showError('Permission denied. Please allow motion access in Settings > Safari.');
+                }
+            } catch (e) {
+                showError('Permission request failed: ' + e.message);
+            }
+        }
+
+        // ── Connection ────────────────────────────────────────
+        function startConnection() {
+            const sessionId = document.getElementById('sessionInput').value.trim();
+            if (!sessionId) {
+                showError('Please enter a session ID.');
+                return;
+            }
+
+            if (!hasPermission) {
+                showError('Please grant gyroscope permission first.');
+                return;
+            }
+
+            // Build WebSocket URL — connect to backend
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = location.host; // same host as this page
+            const wsUrl = `${protocol}//${host}/ws/phone/${sessionId}`;
+
+            console.log('[Phone] Connecting to:', wsUrl);
+            showError('');
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('[Phone] Connected!');
+                isConnected = true;
+                updateStatus(true);
+                showActivePhase();
+                startOrientationListener();
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'phonePoseAck' && msg.data) {
+                        // Update slice display from backend response
+                        const d = msg.data;
+                        if (d.sliceIdx !== undefined) {
+                            const pct = (d.sliceIdx / d.maxSlices) * 100;
+                            document.getElementById('sliceValue').textContent =
+                                `${d.sliceIdx} / ${d.maxSlices}`;
+                            document.getElementById('sliceBar').style.width = `${pct}%`;
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            };
+
+            ws.onerror = (e) => {
+                console.error('[Phone] WS Error:', e);
+                showError('Connection failed. Check that the session is active.');
+            };
+
+            ws.onclose = () => {
+                console.log('[Phone] Disconnected');
+                isConnected = false;
+                updateStatus(false);
+            };
+        }
+
+        function disconnect() {
+            isConnected = false;
+            if (ws) { ws.close(); ws = null; }
+            updateStatus(false);
+            document.getElementById('setupPhase').style.display = 'block';
+            document.getElementById('activePhase').style.display = 'none';
+        }
+
+        // ── Orientation Listener ──────────────────────────────
+        function startOrientationListener() {
+            window.addEventListener('deviceorientation', onOrientation, true);
+        }
+
+        function onOrientation(event) {
+            rawAlpha = event.alpha || 0; // compass: 0-360
+            rawBeta = event.beta || 0;   // front/back tilt: -180 to 180
+            rawGamma = event.gamma || 0; // left/right tilt: -90 to 90
+
+            // Apply calibration offsets
+            const pitch = rawBeta - calBeta;   // front/back
+            const yaw = rawAlpha - calAlpha;   // compass
+            const roll = rawGamma - calGamma;  // left/right
+
+            // Update UI
+            document.getElementById('pitchVal').textContent = Math.round(pitch);
+            document.getElementById('yawVal').textContent = Math.round(yaw);
+            document.getElementById('rollVal').textContent = Math.round(roll);
+
+            // Update visual dot position
+            updateProbeDot(roll, pitch);
+
+            // Send to backend (throttled)
+            const now = Date.now();
+            if (!isLocked && isConnected && ws && ws.readyState === WebSocket.OPEN
+                && now - lastSendTime >= SEND_INTERVAL) {
+                lastSendTime = now;
+                ws.send(JSON.stringify({
+                    type: 'phoneOrientation',
+                    data: {
+                        alpha: rawAlpha,
+                        beta: rawBeta,
+                        gamma: rawGamma,
+                        // Calibrated values
+                        pitch: pitch,
+                        yaw: yaw,
+                        roll: roll,
+                    }
+                }));
+
+                // FPS tracking
+                frameCount++;
+                if (now - lastFpsTime >= 1000) {
+                    document.getElementById('fpsCounter').textContent = `${frameCount} fps`;
+                    frameCount = 0;
+                    lastFpsTime = now;
+                }
+            }
+        }
+
+        function updateProbeDot(roll, pitch) {
+            const dot = document.getElementById('probeDot');
+            const circleRadius = 60; // px radius of the circle
+
+            // Map angles to position within circle
+            const x = Math.max(-1, Math.min(1, roll / 45)) * circleRadius;
+            const y = Math.max(-1, Math.min(1, pitch / 45)) * circleRadius;
+
+            dot.style.left = `calc(50% + ${x}px - 8px)`;
+            dot.style.top = `calc(50% + ${y}px - 8px)`;
+        }
+
+        // ── Calibrate ─────────────────────────────────────────
+        function calibrate() {
+            calAlpha = rawAlpha;
+            calBeta = rawBeta;
+            calGamma = rawGamma;
+
+            // Flash feedback
+            const btn = document.getElementById('calibrateBtn');
+            btn.textContent = '✅ Calibrated!';
+            setTimeout(() => { btn.textContent = '🎯 Calibrate'; }, 1500);
+        }
+
+        // ── Lock/Unlock ───────────────────────────────────────
+        function toggleLock() {
+            isLocked = !isLocked;
+            document.getElementById('lockedOverlay').style.display = isLocked ? 'flex' : 'none';
+            document.getElementById('lockBtn').textContent = isLocked ? '🔓 Unlock' : '🔒 Lock';
+        }
+
+        // ── Helpers ───────────────────────────────────────────
+        function updateStatus(connected) {
+            const badge = document.getElementById('statusBadge');
+            const text = document.getElementById('statusText');
+            badge.className = 'status-badge ' + (connected ? 'connected' : 'offline');
+            text.textContent = connected ? 'CONNECTED' : 'OFFLINE';
+        }
+
+        function showActivePhase() {
+            document.getElementById('setupPhase').style.display = 'none';
+            const active = document.getElementById('activePhase');
+            active.style.display = 'flex';
+            active.style.flexDirection = 'column';
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.textContent = msg;
+            el.style.display = msg ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

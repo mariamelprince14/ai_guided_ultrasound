@@ -48,3 +48,10 @@ captures/
 *.njsproj
 *.sln
 *.sw?
+
+# Large neural network weights
+generator_final.pth
+backend/weights/
+
+# Allow PPO model zip files
+!backend/Pipeline/**/*.zip

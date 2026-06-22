@@ -52,6 +52,7 @@ export const Volume35TrainingSession: React.FC<Volume35SessionProps> = ({ volume
         toggleGuidance,
         anatomyHintActive,
         toggleAnatomyHint,
+        currentFeedback,
     } = useAppStore();
 
     const [loadState]                        = useState<LoadState>(sessionId ? 'ready' : 'error');
@@ -77,23 +78,70 @@ export const Volume35TrainingSession: React.FC<Volume35SessionProps> = ({ volume
         const stability = stabilityHistRef.current.length > 0
             ? Math.round(stabilityHistRef.current.reduce((a, b) => a + b, 0) / stabilityHistRef.current.length)
             : 80;
-        setScanQuality(Math.min(100, Math.round(contact * 0.6 + stability * 0.4)));
+        
         setProbeStability(stability);
-        setOrganCoverage(prev => {
-            const delta = probePhysics.surfaceContact.isInContact ? Math.random() * 1.5 : 0;
-            return Math.min(100, parseFloat((prev + delta).toFixed(1)));
-        });
-    }, [probePhysics, isFrozen]);
+        
+        // Only set fallback simulated metrics if there is no live AI feedback yet
+        if (!currentFeedback) {
+            setScanQuality(Math.min(100, Math.round(contact * 0.6 + stability * 0.4)));
+            setOrganCoverage(prev => {
+                const delta = probePhysics.surfaceContact.isInContact ? Math.random() * 1.5 : 0;
+                return Math.min(100, parseFloat((prev + delta).toFixed(1)));
+            });
+        }
+    }, [probePhysics, isFrozen, currentFeedback]);
 
-    // ── Dynamic Guidance Feedback ─────────────────────────────────────────────
+    // ── Update metrics/suggestions from AI Feedback ───────────────────────────
     useEffect(() => {
-        if (!isVolume35 || sessionStatus !== 'running') return;
+        if (!currentFeedback) return;
+        
+        // Scan Quality from deep learning quality score
+        setScanQuality(Math.round(currentFeedback.qualityScore));
+        
+        // Live Suggested Recommendation from PPO Guidance Agent
+        if (currentFeedback.guidanceSteps && currentFeedback.guidanceSteps.length > 0) {
+            setFeedbackMsg(currentFeedback.guidanceSteps[0]);
+        } else if (currentFeedback.justification) {
+            setFeedbackMsg(currentFeedback.justification);
+        }
+        
+        // Organ Coverage (Dynamic calculation based on progressChecklist)
+        if (currentFeedback.progressChecklist) {
+            const totalChecks = Object.keys(currentFeedback.progressChecklist).length;
+            const checked = Object.values(currentFeedback.progressChecklist).filter(Boolean).length;
+            if (totalChecks > 0) {
+                setOrganCoverage(Math.round((checked / totalChecks) * 100));
+            }
+        }
+    }, [currentFeedback]);
+
+    // ── Voice Guidance for Volume 35 ──────────────────────────────────────────
+    useEffect(() => {
+        if (sessionStatus === 'running' && visualizationSettings.showGuidance && currentMode !== 'advanced' && feedbackMsg) {
+            const speak = (text: string) => {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                utterance.volume = 0.8;
+                window.speechSynthesis.speak(utterance);
+            };
+            
+            if (!feedbackMsg.startsWith('Snapshot saved') && !feedbackMsg.startsWith('Probe reset')) {
+                speak(feedbackMsg);
+            }
+        }
+    }, [feedbackMsg, sessionStatus, visualizationSettings.showGuidance, currentMode]);
+
+    // ── Dynamic Guidance Feedback (fallback if no AI feedback) ─────────────────
+    useEffect(() => {
+        if (!isVolume35 || sessionStatus !== 'running' || currentFeedback) return;
         const id = setInterval(() => {
             setFeedbackMsg(GUIDANCE_MESSAGES[feedbackIdx % GUIDANCE_MESSAGES.length]);
             setFeedbackIdx(i => i + 1);
         }, 4500);
         return () => clearInterval(id);
-    }, [sessionStatus, isVolume35, feedbackIdx]);
+    }, [sessionStatus, isVolume35, feedbackIdx, currentFeedback]);
 
     // ── Mode Change ───────────────────────────────────────────────────────────
     const handleModeChange = useCallback((mode: TrainingMode) => {

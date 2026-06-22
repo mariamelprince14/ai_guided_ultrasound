@@ -23,6 +23,8 @@ import uuid
 import os
 import cv2
 import base64
+import asyncio
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional, Any
 
@@ -41,6 +43,7 @@ import case_manager
 import capture as capture_mod
 from probe_controller import ProbePose, pose_to_matrix, default_axial_matrix
 from reslicer import get_downsampled_volume, build_affine_inverse, compute_volume_bounds_world
+from Pipeline.full_pipeline import UltrasoundPipeline
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -92,6 +95,98 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 WEIGHTS_PATH = os.path.join(os.path.dirname(__file__), "weights/generator_final.pth")
 
 G_axial = UNetGenerator().to(DEVICE)
+
+# --- Lazy loaded AI guidance pipeline ---
+_pipeline_instance: Optional[UltrasoundPipeline] = None
+
+def get_pipeline() -> UltrasoundPipeline:
+    global _pipeline_instance
+    if _pipeline_instance is None:
+        logger.info("⚡ Lazy-loading AI Guidance Pipeline weights (CPU/GPU)...")
+        _pipeline_instance = UltrasoundPipeline()
+        logger.info("🎯 AI Guidance Pipeline fully initialized.")
+    return _pipeline_instance
+
+async def run_ai_pipeline_async(
+    session_id: str,
+    volume: Any,
+    probe_matrix: np.ndarray,
+    ct_slice_u8: np.ndarray,
+    z_idx: int,
+    max_z: int,
+    websocket: WebSocket,
+):
+    s = sessions.get(session_id)
+    if not s or s.get("ai_in_progress"):
+        return
+
+    now = time.time()
+    if now - s.get("last_ai_time", 0.0) < 0.4:
+        return
+
+    s["ai_in_progress"] = True
+    s["last_ai_time"] = now
+
+    cfg = s.get("config", {})
+    target_organ = None
+    target_organs = cfg.get("targetOrgans", [])
+    if target_organs and len(target_organs) > 0:
+        organ_candidate = target_organs[0].lower()
+        if organ_candidate in ["liver", "kidney", "gallbladder"]:
+            target_organ = organ_candidate
+
+    slice_position_norm = float(z_idx) / float(max_z) if max_z > 0 else 0.5
+
+    loop = asyncio.get_running_loop()
+    try:
+        pipeline = get_pipeline()
+        def run_sync():
+            return pipeline.run_array(
+                ct_image_array=ct_slice_u8,
+                target_organ=target_organ,
+                plane="axial",
+                slice_position_norm=slice_position_norm,
+            )
+
+        result = await loop.run_in_executor(None, run_sync)
+        if "error" in result:
+            logger.error(f"AI Pipeline error: {result['error']}")
+            return
+
+        quality_score = float(result.get("quality", 0.0)) * 100.0
+        presence = result.get("presence", "unknown")
+        organ = result.get("organ", "kidney")
+        view_label = f"Axial {organ.capitalize()} ({presence.capitalize()})"
+        action = result.get("action", "ACQUIRE")
+        guidance_steps = [action]
+
+        pq_details = result.get("details", {}).get("presence_quality", {})
+        progress_checklist = {
+            "targetCentered": presence == "full",
+            "depthAppropriate": quality_score > 25.0,
+            "shadowingReduced": True,
+        }
+        for o, res in pq_details.items():
+            progress_checklist[f"{o}Visible"] = res.get("presence") != "absent"
+
+        justification = f"The deep learning guidance agent recommends: {action}. Currently scanning the {organ} with quality {quality_score:.1f}%."
+
+        feedback_data = {
+            "qualityScore": quality_score,
+            "viewLabel": view_label,
+            "guidanceSteps": guidance_steps,
+            "justification": justification,
+            "progressChecklist": progress_checklist,
+        }
+
+        await websocket.send_json({
+            "type": "aiFeedback",
+            "data": feedback_data
+        })
+    except Exception as e:
+        logger.error(f"Error in async AI pipeline executor: {e}", exc_info=True)
+    finally:
+        s["ai_in_progress"] = False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -173,7 +268,7 @@ def _get_volume_norm_bounds(volume_array: np.ndarray) -> tuple[float, float]:
     return _volume_norm_cache[vol_id]
 
 
-def infer_ultrasound_slice(volume_array, affine_inv, probe_matrix, wl=40, ww=400, probe_type="curvilinear"):
+def infer_ultrasound_slice(volume, affine_inv, probe_matrix, wl=40, ww=400, probe_type="curvilinear"):
     """
     Extracts a 5-channel 2.5D axial slab from the CT volume, preprocesses it
     identically to the training pipeline, runs model inference, and returns
@@ -183,23 +278,33 @@ def infer_ultrasound_slice(volume_array, affine_inv, probe_matrix, wl=40, ww=400
         1. normalize_volume: clip at 0.5th/99.5th percentile → scale to [0, 1]
         2. Dataset.__getitem__: resize to 256×256, then scale [0,1] → [-1,1]
     """
+    volume_array = volume.array
     # 1. Map world coordinates → voxel coordinates
     world_translation = np.array([probe_matrix[0, 3], probe_matrix[1, 3], probe_matrix[2, 3], 1.0])
     voxel_coords = affine_inv @ world_translation
     
     # The volume is stored as (Z, Y, X) after transpose in volume_loader.
-    # voxel_coords[2] gives the k-index (Z/axial slice index after transpose)
+    # voxel_coords gives [X, Y, Z] in nibabel order; after transpose:
+    #   shape[0] = Z (axial),  shape[1] = Y (coronal),  shape[2] = X (sagittal)
     z_idx = int(round(voxel_coords[2]))
+    y_idx = int(round(voxel_coords[1]))
+    x_idx = int(round(voxel_coords[0]))
     max_z = volume_array.shape[0]
+    max_y = volume_array.shape[1]
+    max_x = volume_array.shape[2]
     
-    # Boundary clamp to ensure valid 5-slice slab extraction
+    # Boundary clamp to ensure valid 5-slice slab extraction (axial)
     z_idx = max(2, min(z_idx, max_z - 3))
+    # Clamp coronal/sagittal to valid volume bounds
+    y_idx_clamped = max(0, min(y_idx, max_y - 1))
+    x_idx_clamped = max(0, min(x_idx, max_x - 1))
     
     # 2. Get volume-level normalization bounds (matches training's normalize_volume)
     lo, hi = _get_volume_norm_bounds(volume_array)
     
     # 3. Extract 5-channel 2.5D slab with training-matched preprocessing
     ct_slices = []
+    center_norm_01 = None
     for offset in [-2, -1, 0, 1, 2]:
         raw_slice = volume_array[z_idx + offset, :, :]
         
@@ -207,6 +312,9 @@ def infer_ultrasound_slice(volume_array, affine_inv, probe_matrix, wl=40, ww=400
         clipped = np.clip(raw_slice, lo, hi)
         norm_01 = ((clipped - lo) / (hi - lo)).astype(np.float32)
         
+        if offset == 0:
+            center_norm_01 = norm_01
+            
         # Step B: Resize to 256×256 (matches Dataset.__getitem__)
         tensor_slice = torch.from_numpy(norm_01).unsqueeze(0)  # [1, H, W]
         resized_slice = TF.resize(tensor_slice, [256, 256], antialias=True)
@@ -225,12 +333,20 @@ def infer_ultrasound_slice(volume_array, affine_inv, probe_matrix, wl=40, ww=400
     # 5. Denormalize: Tanh [-1,1] → [0,255]
     us_array = predicted_tensor.squeeze().cpu().numpy().astype(np.float32)
     final_frame = np.clip((us_array + 1.0) / 2.0 * 255.0, 0, 255).astype(np.uint8)
+    
+    ct_slice_u8 = np.clip(center_norm_01 * 255.0, 0, 255).astype(np.uint8) if center_norm_01 is not None else None
         
     return {
         "frame": final_frame,
+        "ct_slice_u8": ct_slice_u8,
         "slice_idx": z_idx,
         "max_slices": max_z,
         "voxel_coords": [float(voxel_coords[0]), float(voxel_coords[1]), float(voxel_coords[2])],
+        "plane_positions": {
+            "axial":    volume.get_plane_info("axial", z_idx),
+            "coronal":  volume.get_plane_info("coronal", y_idx_clamped),
+            "sagittal": volume.get_plane_info("sagittal", x_idx_clamped),
+        },
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -386,9 +502,22 @@ async def create_session(req: CreateSessionRequest):
 
     session_id = str(uuid.uuid4())
     sessions[session_id] = {
-        "session_id": session_id, "case_id": req.case_id, "status": "running",
-        "created_at": time.time(), "probe_matrix": default_matrix.tolist(),
-        "settings": _default_session_settings(), "affine_inv": affine_inv, "bounds": bounds,
+        "session_id": session_id,
+        "case_id": req.case_id,
+        "status": "running",
+        "created_at": time.time(),
+        "probe_matrix": default_matrix.tolist(),
+        "settings": _default_session_settings(),
+        "affine_inv": affine_inv,
+        "bounds": bounds,
+        "config": {
+            "mode": req.mode,
+            "probeType": req.probe_type,
+            "targetOrgans": req.target_organs,
+            "difficulty": req.difficulty,
+        },
+        "last_ai_time": 0.0,
+        "ai_in_progress": False,
     }
     return {
         "sessionId": session_id, "wsUrl": f"ws://localhost:8000/ws/{session_id}", "caseId": req.case_id,
@@ -431,14 +560,18 @@ async def get_slice(req: SliceRequest):
     probe_matrix = pose_to_matrix(pose)
 
     # Invoke Axial Inference Pipeline
-    ai_frame = infer_ultrasound_slice(
-        volume.array, s["affine_inv"], probe_matrix, wl=req.wl, ww=req.ww, 
+    result = infer_ultrasound_slice(
+        volume, s["affine_inv"], probe_matrix, wl=req.wl, ww=req.ww, 
         probe_type=s["settings"].get("probe_type", "curvilinear")
     )
     
-    _, buffer = cv2.imencode('.png', ai_frame)
+    _, buffer = cv2.imencode('.png', result["frame"])
     image_b64 = f"data:image/png;base64,{base64.b64encode(buffer.tobytes()).decode('utf-8')}"
-    return {"image": image_b64, "timestamp": time.time()}
+    return {
+        "image": image_b64,
+        "timestamp": time.time(),
+        "planePositions": result["plane_positions"],
+    }
 
 class CaptureRequest(BaseModel):
     session_id: str
@@ -453,15 +586,16 @@ async def do_capture(req: CaptureRequest):
     if volume is None: raise HTTPException(status_code=503, detail="Volume not loaded")
 
     probe_matrix = np.array(req.probe_matrix, dtype=np.float64)
-    ai_frame = infer_ultrasound_slice(
-        volume.array, s["affine_inv"], probe_matrix, wl=req.wl, ww=req.ww,
+    ai_result = infer_ultrasound_slice(
+        volume, s["affine_inv"], probe_matrix, wl=req.wl, ww=req.ww,
         probe_type=s["settings"].get("probe_type", "curvilinear")
     )
     
-    _, png_bytes = cv2.imencode('.png', ai_frame)
+    _, png_bytes = cv2.imencode('.png', ai_result["frame"])
     result = capture_mod.save_capture(
         session_id=req.session_id, png_bytes=png_bytes.tobytes(),
-        probe_matrix=req.probe_matrix, case_id=s["case_id"]
+        probe_matrix=req.probe_matrix, case_id=s["case_id"],
+        plane_positions=ai_result["plane_positions"],
     )
     return {"success": True, **result}
 
@@ -499,7 +633,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     # 🚨 UPDATED: High frequency asynchronous socket frame streaming engine
     async def send_ai_frame(matrix: np.ndarray, cfg: dict):
         result = infer_ultrasound_slice(
-            volume.array, s["affine_inv"], matrix,
+            volume, s["affine_inv"], matrix,
             wl=cfg.get("wl", 40.0), ww=cfg.get("ww", 400.0),
             probe_type=cfg.get("probe_type", "curvilinear")
         )
@@ -518,8 +652,24 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 "sliceIdx": result["slice_idx"],
                 "maxSlices": result["max_slices"],
                 "voxelCoords": result["voxel_coords"],
+                "planePositions": result["plane_positions"],
             },
         })
+
+        # Trigger background AI pipeline asynchronously
+        ct_slice_u8 = result.get("ct_slice_u8")
+        if ct_slice_u8 is not None:
+            asyncio.create_task(
+                run_ai_pipeline_async(
+                    session_id=session_id,
+                    volume=volume,
+                    probe_matrix=matrix,
+                    ct_slice_u8=ct_slice_u8,
+                    z_idx=result["slice_idx"],
+                    max_z=result["max_slices"],
+                    websocket=websocket,
+                )
+            )
 
     # Dispatch initial system tracking state frame
     await send_ai_frame(probe_matrix, settings)
@@ -557,15 +707,16 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 await send_ai_frame(probe_matrix, settings)
 
             elif msg_type == "capture":
-                ai_frame = infer_ultrasound_slice(
-                    volume.array, s["affine_inv"], probe_matrix,
+                ai_result = infer_ultrasound_slice(
+                    volume, s["affine_inv"], probe_matrix,
                     wl=settings.get("wl", 40.0), ww=settings.get("ww", 400.0),
                     probe_type=settings.get("probe_type", "curvilinear")
                 )
-                _, png_bytes = cv2.imencode('.png', ai_frame)
+                _, png_bytes = cv2.imencode('.png', ai_result["frame"])
                 result = capture_mod.save_capture(
                     session_id=session_id, png_bytes=png_bytes.tobytes(),
-                    probe_matrix=probe_matrix.tolist(), case_id=s["case_id"]
+                    probe_matrix=probe_matrix.tolist(), case_id=s["case_id"],
+                    plane_positions=ai_result["plane_positions"],
                 )
                 await websocket.send_json({"type": "captureResult", "data": {"success": True, **result}})
 
@@ -654,7 +805,7 @@ async def phone_websocket(websocket: WebSocket, session_id: str):
 
                 # Run AI inference
                 result = infer_ultrasound_slice(
-                    volume.array, affine_inv, probe_matrix,
+                    volume, affine_inv, probe_matrix,
                     wl=settings.get("wl", 40.0),
                     ww=settings.get("ww", 400.0),
                     probe_type=settings.get("probe_type", "curvilinear")
@@ -672,6 +823,7 @@ async def phone_websocket(websocket: WebSocket, session_id: str):
                         "sliceIdx": result["slice_idx"],
                         "maxSlices": result["max_slices"],
                         "voxelCoords": result["voxel_coords"],
+                        "planePositions": result["plane_positions"],
                     },
                 }
 
@@ -683,6 +835,21 @@ async def phone_websocket(websocket: WebSocket, session_id: str):
                     except Exception:
                         pass  # Frontend may have disconnected
 
+                # Trigger background AI pipeline asynchronously
+                ct_slice_u8 = result.get("ct_slice_u8")
+                if ct_slice_u8 is not None and frontend_ws:
+                    asyncio.create_task(
+                        run_ai_pipeline_async(
+                            session_id=session_id,
+                            volume=volume,
+                            probe_matrix=probe_matrix,
+                            ct_slice_u8=ct_slice_u8,
+                            z_idx=result["slice_idx"],
+                            max_z=result["max_slices"],
+                            websocket=frontend_ws,
+                        )
+                    )
+
                 # Send acknowledgement + slice info back to phone
                 await websocket.send_json({
                     "type": "phonePoseAck",
@@ -690,6 +857,7 @@ async def phone_websocket(websocket: WebSocket, session_id: str):
                         "sliceIdx": result["slice_idx"],
                         "maxSlices": result["max_slices"],
                         "worldPos": [x_pos, y_pos, z_pos],
+                        "planePositions": result["plane_positions"],
                     }
                 })
 
@@ -710,6 +878,44 @@ async def phone_status(session_id: str):
     return {
         "connected": session_id in phone_connections,
         "sessionId": session_id,
+    }
+
+
+@app.get("/api/session/{session_id}/plane-positions")
+async def get_plane_positions(session_id: str):
+    """
+    Returns the current probe's axial/coronal/sagittal slice indices.
+    Lightweight endpoint for the guidance model — no AI inference is run.
+    """
+    s = sessions.get(session_id)
+    if not s:
+        raise HTTPException(status_code=404, detail="Session not found")
+    volume = case_manager.get_loaded_volume(s["case_id"])
+    if volume is None:
+        raise HTTPException(status_code=503, detail="Volume not loaded")
+
+    probe_matrix = np.array(s["probe_matrix"], dtype=np.float64)
+    affine_inv = s["affine_inv"]
+
+    # Map world position → voxel coordinates
+    world_translation = np.array([
+        probe_matrix[0, 3], probe_matrix[1, 3], probe_matrix[2, 3], 1.0
+    ])
+    voxel_coords = affine_inv @ world_translation
+
+    max_z, max_y, max_x = volume.array.shape
+    z_idx = max(0, min(int(round(voxel_coords[2])), max_z - 1))
+    y_idx = max(0, min(int(round(voxel_coords[1])), max_y - 1))
+    x_idx = max(0, min(int(round(voxel_coords[0])), max_x - 1))
+
+    return {
+        "sessionId": session_id,
+        "voxelCoords": [float(voxel_coords[0]), float(voxel_coords[1]), float(voxel_coords[2])],
+        "planePositions": {
+            "axial":    volume.get_plane_info("axial", z_idx),
+            "coronal":  volume.get_plane_info("coronal", y_idx),
+            "sagittal": volume.get_plane_info("sagittal", x_idx),
+        },
     }
 
 

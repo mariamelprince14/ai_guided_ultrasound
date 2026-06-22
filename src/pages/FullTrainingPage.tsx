@@ -43,6 +43,7 @@ export const FullTrainingPage: React.FC = () => {
         updatePose,
         loadVolumeAlignment,
         visualizationSettings,
+        updateFeedback,
     } = useAppStore();
 
     const [loadState, setLoadState] = useState<LoadState>('idle');
@@ -61,6 +62,9 @@ export const FullTrainingPage: React.FC = () => {
                             ? { sliceIdx: message.data.sliceIdx, maxSlices: message.data.maxSlices }
                             : undefined
                     );
+                    break;
+                case 'aiFeedback':
+                    updateFeedback(message.data);
                     break;
                 case 'sessionEvent':
                     if (message.data.event === 'started') setSessionStatus('running');
@@ -82,7 +86,7 @@ export const FullTrainingPage: React.FC = () => {
             unsubscribeMsg();
             unsubscribeConn();
         };
-    }, [updateFrame, setSessionStatus, setConnectionStatus]);
+    }, [updateFrame, setSessionStatus, setConnectionStatus, updateFeedback]);
 
     // ── Load session ────────────────────────────────────────────────────────
     const handleLoadCase = useCallback(async (caseIdOverride?: string) => {

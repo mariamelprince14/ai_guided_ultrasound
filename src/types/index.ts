@@ -70,6 +70,27 @@ export interface VolumeVoxelData {
     };
 }
 
+// Plane position data for guidance model integration
+export interface PlanePosition {
+    sample_type: string;
+    plane: string;
+    slice_index: number;
+    slice_position_mm: number;
+    slicing_axis: string;
+    ct_size_xyz: [number, number, number];
+    ct_spacing_xyz_mm: [number, number, number];
+    ct_origin_xyz_mm: [number, number, number];
+    output_shape_HxW: [number, number];
+    index: number;
+    max: number;
+}
+
+export interface PlanePositions {
+    axial: PlanePosition;
+    coronal: PlanePosition;
+    sagittal: PlanePosition;
+}
+
 // Torso & Volume Registration
 export interface VolumeRegistration {
     position: [number, number, number];
@@ -230,6 +251,7 @@ export interface UltrasoundFrameMessage {
         sliceIdx?: number;
         maxSlices?: number;
         voxelCoords?: [number, number, number];
+        planePositions?: PlanePositions;
     };
 }
 
@@ -270,6 +292,7 @@ export interface RawUltrasoundFrameMessage {
         sliceIdx?: number;
         maxSlices?: number;
         voxelCoords?: [number, number, number];
+        planePositions?: PlanePositions;
     };
 }
 
