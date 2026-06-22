@@ -87,17 +87,27 @@ def _get_volume_norm_bounds(volume_3d):
     return _volume_norm_cache[vol_id]
 
 
-def generate_ai_ultrasound_frame(volume_3d, slice_idx, wl=40, ww=400):
+def generate_ai_ultrasound_frame(volume, slice_idx, wl=40, ww=400):
     """
     Extracts an axial 2.5D slab block from the cached NIfTI volume array,
     preprocesses it identically to the training pipeline, runs model inference,
-    and returns a Base64 encoded string.
+    and returns a dict with the Base64 encoded image and plane positions.
     
     Training preprocessing (from CT_to_US_Pix2Pix_MultiPlanar.ipynb):
         1. normalize_volume: clip at 0.5th/99.5th percentile → scale to [0, 1]
         2. Dataset.__getitem__: resize to 256×256, then scale [0,1] → [-1,1]
     """
+    from volume_loader import VolumeData
+    if isinstance(volume, VolumeData):
+        volume_data = volume
+        volume_3d = volume.array
+    else:
+        volume_data = None
+        volume_3d = volume
+
     max_z = volume_3d.shape[0]
+    max_y = volume_3d.shape[1]
+    max_x = volume_3d.shape[2]
     
     # Boundary clamp safety check
     slice_idx = max(2, min(slice_idx, max_z - 3))
@@ -137,4 +147,24 @@ def generate_ai_ultrasound_frame(volume_3d, slice_idx, wl=40, ww=400):
     _, buffer = cv2.imencode('.png', final_frame)
     b64_string = base64.b64encode(buffer.tobytes()).decode('utf-8')
     
-    return f"data:image/png;base64,{b64_string}"
+    # Coronal/sagittal default to center when called standalone (no world position)
+    y_center = max_y // 2
+    x_center = max_x // 2
+    
+    if volume_data is not None:
+        plane_positions = {
+            "axial":    volume_data.get_plane_info("axial", slice_idx),
+            "coronal":  volume_data.get_plane_info("coronal", y_center),
+            "sagittal": volume_data.get_plane_info("sagittal", x_center),
+        }
+    else:
+        plane_positions = {
+            "axial":    {"index": slice_idx, "max": max_z},
+            "coronal":  {"index": y_center,  "max": max_y},
+            "sagittal": {"index": x_center,  "max": max_x},
+        }
+
+    return {
+        "image": f"data:image/png;base64,{b64_string}",
+        "plane_positions": plane_positions,
+    }

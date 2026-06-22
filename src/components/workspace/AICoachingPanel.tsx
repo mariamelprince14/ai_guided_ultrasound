@@ -14,12 +14,14 @@ import { useAppStore } from '@store/useAppStore';
 import styles from './AICoachingPanel.module.css';
 
 export const AICoachingPanel: React.FC = () => {
-    const { visualizationSettings } = useAppStore();
+    const { visualizationSettings, currentFeedback } = useAppStore();
     
-    const suggestions = [
-        "Rotate the probe 15° clockwise to align with the renal axis.",
-        "Increase depth to 16cm for better visualization of the posterior cortex."
-    ];
+    const suggestions = currentFeedback?.guidanceSteps && currentFeedback.guidanceSteps.length > 0
+        ? currentFeedback.guidanceSteps
+        : [
+            "Rotate the probe 15° clockwise to align with the renal axis.",
+            "Increase depth to 16cm for better visualization of the posterior cortex."
+        ];
 
     // Voice guidance implementation
     React.useEffect(() => {
@@ -35,15 +37,10 @@ export const AICoachingPanel: React.FC = () => {
                 window.speechSynthesis.speak(utterance);
             };
 
-            // For demo purposes, we speak the first one once when loaded
-            // In a real app, we'd trigger this whenever a NEW message arrives from the backend
-            const timeout = setTimeout(() => {
-                speak(suggestions[0]);
-            }, 1500);
-
-            return () => clearTimeout(timeout);
+            // Speak the current top recommendation when it changes
+            speak(suggestions[0]);
         }
-    }, [visualizationSettings.mode]);
+    }, [suggestions[0], visualizationSettings.mode]);
 
     if (visualizationSettings.mode === 'advanced') {
         return null; // Hide in advanced mode
@@ -82,8 +79,23 @@ export const AICoachingPanel: React.FC = () => {
                     <ChevronDown size={12} />
                 </div>
                 <div className={styles.compactTips}>
-                    <div className={styles.tip}>• Morrison's Pouch (Superior)</div>
-                    <div className={styles.tip}>• Liver Interface (Anterior)</div>
+                    {currentFeedback?.progressChecklist ? (
+                        Object.entries(currentFeedback.progressChecklist)
+                            .filter(([key]) => key.endsWith("Visible"))
+                            .map(([key, visible]) => {
+                                const organName = key.replace("Visible", "");
+                                return (
+                                    <div key={key} className={styles.tip} style={{ opacity: visible ? 1 : 0.5 }}>
+                                        {visible ? '• ' : '○ '} {organName.charAt(0).toUpperCase() + organName.slice(1)} {visible ? '(Visible)' : '(Not visible)'}
+                                    </div>
+                                );
+                            })
+                    ) : (
+                        <>
+                            <div className={styles.tip}>• Morrison's Pouch (Superior)</div>
+                            <div className={styles.tip}>• Liver Interface (Anterior)</div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

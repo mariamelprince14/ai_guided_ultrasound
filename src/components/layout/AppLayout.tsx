@@ -11,7 +11,7 @@ interface AppLayoutProps {
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     const location = useLocation();
     const isTrainingRoute = location.pathname.startsWith('/training') || location.pathname === '/workspace';
-    const isHomepage = location.pathname === '/';
+    const isHomepage = location.pathname === '/' || location.pathname === '/setup' || location.pathname === '/results' || location.pathname === '/status';
 
     if (isTrainingRoute) {
         return (

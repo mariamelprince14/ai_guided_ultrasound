@@ -39,6 +39,7 @@ def save_capture(
     png_bytes: bytes,
     probe_matrix: list[list[float]],  # 4×4 as nested list
     case_id: str,
+    plane_positions: Optional[dict] = None,
     extra_meta: Optional[dict] = None,
 ) -> dict:
     """
@@ -64,6 +65,7 @@ def save_capture(
         "session_id": session_id,
         "case_id": case_id,
         "probe_matrix_4x4": probe_matrix,
+        "plane_positions": plane_positions or {},
         "extra": extra_meta or {},
     }
     pose_path.write_text(json.dumps(pose_data, indent=2))
@@ -74,6 +76,7 @@ def save_capture(
         "frame_path": str(frame_path),
         "pose_path": str(pose_path),
     }
+
 
 
 def list_captures(session_id: str) -> list[dict]:

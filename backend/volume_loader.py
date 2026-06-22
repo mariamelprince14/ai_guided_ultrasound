@@ -31,6 +31,49 @@ class VolumeData:
     seg_array: Optional[np.ndarray] = None    # same shape, int labels
     seg_labels: dict = field(default_factory=dict)  # label_int → name
 
+    def get_plane_info(self, plane_name: str, slice_index: int) -> dict:
+        """
+        Get detailed plane information formatted for the guidance model.
+        """
+        # Convert RAS origin to LPS (negating X and Y axis translations)
+        origin_lps = [-self.affine[0, 3], -self.affine[1, 3], self.affine[2, 3]]
+        spacing_lps = [self.voxel_spacing[2], self.voxel_spacing[1], self.voxel_spacing[0]] # [dx, dy, dz]
+        size_lps = [self.shape[2], self.shape[1], self.shape[0]] # [W, H, D]
+        
+        if plane_name == "sagittal":
+            slicing_axis = "x/left-right"
+            axis_idx = 0
+            max_val = self.shape[2]
+            output_shape = [self.shape[0], self.shape[1]] # [D, H]
+        elif plane_name == "coronal":
+            slicing_axis = "y/anterior-posterior"
+            axis_idx = 1
+            max_val = self.shape[1]
+            output_shape = [self.shape[0], self.shape[2]] # [D, W]
+        else:  # axial
+            slicing_axis = "z/superior-inferior"
+            axis_idx = 2
+            max_val = self.shape[0]
+            output_shape = [self.shape[1], self.shape[2]] # [H, W]
+            
+        slice_position_mm = origin_lps[axis_idx] + slice_index * spacing_lps[axis_idx]
+        
+        return {
+            "sample_type": "2D_anatomical_plane",
+            "plane": plane_name,
+            "slice_index": int(slice_index),
+            "slice_position_mm": float(slice_position_mm),
+            "slicing_axis": slicing_axis,
+            "ct_size_xyz": [int(x) for x in size_lps],
+            "ct_spacing_xyz_mm": [float(x) for x in spacing_lps],
+            "ct_origin_xyz_mm": [float(x) for x in origin_lps],
+            "output_shape_HxW": [int(x) for x in output_shape],
+            # Retain backwards compatibility fields:
+            "index": int(slice_index),
+            "max": int(max_val)
+        }
+
+
 
 def load_volume(volume_path: str | Path) -> VolumeData:
     """
