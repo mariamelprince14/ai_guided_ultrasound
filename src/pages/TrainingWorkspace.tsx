@@ -29,6 +29,7 @@ export const TrainingWorkspace: React.FC = () => {
     switch (selectedMode) {
         case 'full':
             return <FullTrainingPage />;
+        case 'theoretical':
         case 'assessment':
             return <AssessmentPage />;
         case 'identification':

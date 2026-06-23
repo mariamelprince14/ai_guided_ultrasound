@@ -77,37 +77,21 @@ const modeCards: ModeCardData[] = [
         image: '/images/card-abdominal.png',
     },
     {
-        mode: 'assessment',
+        mode: 'theoretical',
         icon: <ClipboardCheck size={28} color="var(--color-primary-500)" />,
-        title: 'Clinical Case Assessment',
+        title: 'Theoretical Clinical Assessment Mode',
         description:
-            'Simulated abdominal ultrasound cases with abnormality detection and diagnostic questions.',
+            'Combined clinical cases and anatomy identification questions to test your diagnostic and recognition knowledge.',
         focusIcon: <BookOpen size={16} className={styles.focusIcon} />,
         whatYouDo:
-            'Answer multiple-choice questions about ultrasound images to test your diagnostic knowledge.',
+            'Evaluate pathology scans and identify anatomical views/transducers across a variety of questions.',
         expectedOutputs: [
-            { icon: <MessageSquare size={15} />, text: 'Correct/incorrect feedback' },
-            { icon: <BookOpen size={15} />, text: 'Detailed explanations' },
-            { icon: <BarChart3 size={15} />, text: 'Score tracking' },
-            { icon: <Brain size={15} />, text: 'Knowledge assessment' },
+            { icon: <MessageSquare size={15} />, text: 'Diagnostic case questions' },
+            { icon: <Brain size={15} />, text: 'Anatomy identification tasks' },
+            { icon: <BookOpen size={15} />, text: 'Detailed sonographic explanations' },
+            { icon: <Award size={15} />, text: 'Comprehensive score tracking' },
         ],
         image: '/images/card-clinical.png',
-    },
-    {
-        mode: 'identification',
-        icon: <ScanEye size={28} color="var(--color-primary-500)" />,
-        title: 'Abdominal Anatomy ID',
-        description: 'Recognition training for abdominal organs and anatomical views.',
-        focusIcon: <Microscope size={16} className={styles.focusIcon} />,
-        whatYouDo:
-            'Identify organs, anatomical views, and probe types from ultrasound images.',
-        expectedOutputs: [
-            { icon: <Zap size={15} />, text: 'Instant feedback' },
-            { icon: <Target size={15} />, text: 'Recognition accuracy' },
-            { icon: <Lightbulb size={15} />, text: 'Hints for beginners' },
-            { icon: <GraduationCap size={15} />, text: 'Skill progression' },
-        ],
-        image: '/images/card-anatomy.png',
     },
 ];
 
@@ -156,13 +140,8 @@ const demoSlides = [
     },
     {
         icon: <ClipboardCheck size={36} />,
-        title: 'Clinical Case Assessment',
-        desc: 'Test diagnostic knowledge with simulated clinical cases. Answer multiple-choice questions about ultrasound images and receive detailed explanations.',
-    },
-    {
-        icon: <ScanEye size={36} />,
-        title: 'Abdominal Anatomy ID',
-        desc: 'Identify and learn anatomical structures from ultrasound images. Get instant feedback on recognition accuracy with hints for beginners.',
+        title: 'Theoretical Clinical Assessment Mode',
+        desc: 'Test diagnostic and recognition knowledge with combined clinical cases and anatomy identification questions. Shuffled quizzes with detailed sonographic explanations.',
     },
 ];
 
