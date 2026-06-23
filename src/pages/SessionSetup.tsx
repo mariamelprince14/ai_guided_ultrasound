@@ -46,6 +46,13 @@ export const SessionSetup: React.FC = () => {
     const [showSignIn, setShowSignIn] = useState(false);
     const [showSignUp, setShowSignUp] = useState(false);
 
+    // Redirect to workspace directly if the mode is assessment or identification
+    React.useEffect(() => {
+        if (selectedMode && selectedMode !== 'full') {
+            navigate('/workspace');
+        }
+    }, [selectedMode, navigate]);
+
     const handleOrganToggle = (organ: string) => {
         setTargetOrgans((prev) =>
             prev.includes(organ)

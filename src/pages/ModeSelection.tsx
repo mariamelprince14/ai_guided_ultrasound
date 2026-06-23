@@ -252,7 +252,11 @@ export const ModeSelection: React.FC = () => {
 
     const handleContinueTraining = () => {
         if (selectedMode) {
-            navigate('/setup');
+            if (selectedMode === 'full') {
+                navigate('/setup');
+            } else {
+                navigate('/workspace');
+            }
         }
     };
 
