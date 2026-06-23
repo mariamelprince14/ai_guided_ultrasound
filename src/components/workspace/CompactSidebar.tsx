@@ -30,7 +30,7 @@ interface CompactSidebarProps {
 
 export const CompactSidebar: React.FC<CompactSidebarProps> = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
-    const { resetSession } = useAppStore();
+    const { resetSession, setSelectedMode } = useAppStore();
     const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
     const navigationGroups = [
@@ -51,14 +51,13 @@ export const CompactSidebar: React.FC<CompactSidebarProps> = ({ isOpen, onClose 
             label: 'Training Tools',
             items: [
                 {
-                    icon: <Crosshair size={18} />,
-                    label: 'Target Identification',
-                    action: () => navigate('/training/identification'),
-                },
-                {
                     icon: <BarChart3 size={18} />,
-                    label: 'Assessment',
-                    action: () => navigate('/training/assessment'),
+                    label: 'Theoretical Assessment',
+                    action: () => {
+                        setSelectedMode('theoretical');
+                        navigate('/workspace');
+                        onClose();
+                    },
                 },
             ],
         },

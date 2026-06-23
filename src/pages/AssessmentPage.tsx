@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@store/useAppStore';
 import { questionsDatabase } from '@constants/questionsData';
-import type { Question, MultipleChoiceQuestion, NormalVsAbnormalQuestion } from '@constants/questionsData';
+import type { 
+    Question, 
+    MultipleChoiceQuestion, 
+    NormalVsAbnormalQuestion,
+    SelectPresentOrgansQuestion,
+    MatchingQuestion
+} from '@constants/questionsData';
 import { 
     ClipboardCheck, 
     CheckCircle2, 
@@ -14,13 +20,15 @@ import {
     Award,
     Check,
     X,
-    Eye
+    Eye,
+    ScanEye,
+    Lightbulb
 } from 'lucide-react';
 import styles from './TestMode.module.css';
 
 export const AssessmentPage: React.FC = () => {
     const navigate = useNavigate();
-    const { incrementCorrectAnswers, incrementTotalAttempts } = useAppStore();
+    const { incrementCorrectAnswers, incrementTotalAttempts, setSelectedMode } = useAppStore();
 
     /* Test State */
     const [step, setStep] = useState<'intro' | 'test' | 'results'>('intro');
@@ -32,17 +40,23 @@ export const AssessmentPage: React.FC = () => {
     const [selectedMcAnswer, setSelectedMcAnswer] = useState<number | null>(null);
     const [selectedNormalAbnormal, setSelectedNormalAbnormal] = useState<{ left: string; right: string }>({ left: '', right: '' });
     const [isNormalLeft, setIsNormalLeft] = useState<boolean>(true); // Shuffle normal vs abnormal position
+    const [selectedOrgans, setSelectedOrgans] = useState<string[]>([]);
+    const [matchingAnswers, setMatchingAnswers] = useState<{ [key: string]: string }>({ A: '', B: '', C: '' });
     const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+    const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
     
     /* Logging for review */
     const [userAnswersLog, setUserAnswersLog] = useState<any[]>([]);
 
     /* Initialize/Shuffle Questions */
     const startNewTest = () => {
-        const rawPool = [...questionsDatabase.clinical_case_assessment];
+        const rawPool = [
+            ...(questionsDatabase.clinical_case_assessment || []),
+            ...(questionsDatabase.abdominal_anatomy_id || [])
+        ];
         // Shuffle helper
         const shuffled = rawPool.sort(() => Math.random() - 0.5);
-        // Take 20 questions (there are exactly 20 in the database)
+        // Take 20 questions
         setShuffledQuestions(shuffled.slice(0, 20));
         setCurrentIdx(0);
         setScore(0);
@@ -54,6 +68,8 @@ export const AssessmentPage: React.FC = () => {
     const resetQuestionState = (question: Question) => {
         setSelectedMcAnswer(null);
         setSelectedNormalAbnormal({ left: '', right: '' });
+        setSelectedOrgans([]);
+        setMatchingAnswers({ A: '', B: '', C: '' });
         setIsSubmitted(false);
         // Randomize normal left/right for normal_vs_abnormal questions
         if (question && question.type === 'normal_vs_abnormal') {
@@ -62,6 +78,20 @@ export const AssessmentPage: React.FC = () => {
     };
 
     const currentQuestion = shuffledQuestions[currentIdx];
+
+    const handleOrganToggle = (organ: string) => {
+        if (isSubmitted) return;
+        setSelectedOrgans(prev => 
+            prev.includes(organ) 
+                ? prev.filter(o => o !== organ) 
+                : [...prev, organ]
+        );
+    };
+
+    const handleMatchingSelect = (key: string, val: string) => {
+        if (isSubmitted) return;
+        setMatchingAnswers(prev => ({ ...prev, [key]: val }));
+    };
 
     const handleSubmit = () => {
         if (!currentQuestion) return;
@@ -85,6 +115,22 @@ export const AssessmentPage: React.FC = () => {
             correct = left === expectedLeft && right === expectedRight;
             userAnswersDisplay = `Left: ${left.toUpperCase()}, Right: ${right.toUpperCase()}`;
             correctAnswersDisplay = `Left: ${expectedLeft.toUpperCase()}, Right: ${expectedRight.toUpperCase()}`;
+        } else if (currentQuestion.type === 'select_present_organs') {
+            if (selectedOrgans.length === 0) return;
+            const userNorm = [...selectedOrgans].map(o => o.toLowerCase()).sort();
+            const correctNorm = [...currentQuestion.correctOptions].map(o => o.toLowerCase()).sort();
+            correct = userNorm.length === correctNorm.length && 
+                      userNorm.every((val, index) => val === correctNorm[index]);
+            userAnswersDisplay = selectedOrgans.join(', ');
+            correctAnswersDisplay = currentQuestion.correctOptions.join(', ');
+        } else if (currentQuestion.type === 'matching') {
+            const answers = matchingAnswers;
+            if (!answers.A || !answers.B || !answers.C) return;
+            correct = answers.A === currentQuestion.matches.A &&
+                      answers.B === currentQuestion.matches.B &&
+                      answers.C === currentQuestion.matches.C;
+            userAnswersDisplay = `A-${answers.A}, B-${answers.B}, C-${answers.C}`;
+            correctAnswersDisplay = `A-${currentQuestion.matches.A}, B-${currentQuestion.matches.B}, C-${currentQuestion.matches.C}`;
         }
 
         setIsSubmitted(true);
@@ -102,7 +148,9 @@ export const AssessmentPage: React.FC = () => {
                 isCorrect: correct,
                 userAnswer: userAnswersDisplay,
                 correctAnswer: correctAnswersDisplay,
-                isNormalLeft: currentQuestion.type === 'normal_vs_abnormal' ? isNormalLeft : undefined
+                isNormalLeft: currentQuestion.type === 'normal_vs_abnormal' ? isNormalLeft : undefined,
+                matchingAnswers: currentQuestion.type === 'matching' ? { ...matchingAnswers } : undefined,
+                selectedOrgans: currentQuestion.type === 'select_present_organs' ? [...selectedOrgans] : undefined
             }
         ]);
     };
@@ -117,6 +165,12 @@ export const AssessmentPage: React.FC = () => {
         }
     };
 
+    const handleExitConfirm = () => {
+        setShowExitConfirm(false);
+        setSelectedMode(null);
+        navigate('/');
+    };
+
     const progressPercent = shuffledQuestions.length > 0 
         ? ((currentIdx + (isSubmitted ? 1 : 0)) / shuffledQuestions.length) * 100 
         : 0;
@@ -127,13 +181,13 @@ export const AssessmentPage: React.FC = () => {
         if (percentage >= 90) {
             return {
                 grade: 'Outstanding',
-                message: 'Excellent clinical diagnostic skills! You have successfully mastered this module\'s objectives and demonstrated superb pathological pattern recognition.',
+                message: 'Excellent clinical diagnostic and anatomical recognition skills! You have successfully mastered this module\'s objectives.',
                 style: styles.textSuccess
             };
         } else if (percentage >= 70) {
             return {
                 grade: 'Competent',
-                message: 'Great job! You have a solid grasp of abdominal pathologies and can reliably distinguish normal variations from abnormal clinical cases.',
+                message: 'Great job! You have a solid grasp of abdominal anatomy and pathologies and can reliably distinguish normal variations from abnormal clinical cases.',
                 style: styles.textPrimary
             };
         } else {
@@ -154,9 +208,9 @@ export const AssessmentPage: React.FC = () => {
                         <div className={styles.iconWrapper}>
                             <ClipboardCheck size={32} />
                         </div>
-                        <h1 className={styles.introTitle}>Clinical Case Assessment</h1>
+                        <h1 className={styles.introTitle}>Theoretical Clinical Assessment</h1>
                         <p className={styles.introSubtitle}>
-                            Test your clinical diagnostic skills by evaluating real abdominal ultrasound scans, distinguishing normal from abnormal anatomy, and identifying common pathologies.
+                            Evaluate clinical case abnormalities, distinguish normal from pathological tissue, identify anatomical landmarks, and verify correct transducer orientations.
                         </p>
                     </div>
 
@@ -167,15 +221,19 @@ export const AssessmentPage: React.FC = () => {
                         <ul className={styles.objectivesList}>
                             <li className={styles.objectiveItem}>
                                 <Check className={styles.checkIcon} size={16} />
-                                <span>Distinguish normal ultrasound features of the liver, gallbladder, and kidneys from abnormal pathologies.</span>
+                                <span>Distinguish normal ultrasound features of the liver, gallbladder, kidneys, and spleen from abnormal pathologies.</span>
                             </li>
                             <li className={styles.objectiveItem}>
                                 <Check className={styles.checkIcon} size={16} />
-                                <span>Identify common abnormality patterns including fatty liver (steatosis), cirrhosis, cysts, calculi (stones), sludge, and hydronephrosis.</span>
+                                <span>Identify common pathology patterns including fatty liver, cirrhosis, cysts, calculi (stones), sludge, and hydronephrosis.</span>
                             </li>
                             <li className={styles.objectiveItem}>
                                 <Check className={styles.checkIcon} size={16} />
-                                <span>Correlate clinical patient cases (symptoms and lab values) with corresponding sonographic findings.</span>
+                                <span>Correctly identify major abdominal organs, vessels, and spaces from standard multi-organ scanning windows.</span>
+                            </li>
+                            <li className={styles.objectiveItem}>
+                                <Check className={styles.checkIcon} size={16} />
+                                <span>Associate transducer footprints (Curvilinear vs. Linear vs. Phased array) with their respective ultrasound fields-of-view.</span>
                             </li>
                         </ul>
                     </div>
@@ -187,7 +245,7 @@ export const AssessmentPage: React.FC = () => {
                         </div>
                         <div className={styles.metaItem}>
                             <Eye size={16} />
-                            <span>Format: <strong>Normal/Abnormal Dropdowns & Multiple Choice</strong></span>
+                            <span>Format: <strong>Dropdowns, Checkboxes, MCQs & Matching</strong></span>
                         </div>
                     </div>
 
@@ -207,7 +265,7 @@ export const AssessmentPage: React.FC = () => {
                     {/* Progress Bar & Header */}
                     <div className={styles.testHeader}>
                         <div className={styles.headerTop}>
-                            <h2 className={styles.headerTitle}>Clinical Case Assessment</h2>
+                            <h2 className={styles.headerTitle}>Theoretical Clinical Assessment</h2>
                             <div className={styles.headerStats}>
                                 <span className={styles.statBadge}>
                                     Question {currentIdx + 1} of {shuffledQuestions.length}
@@ -215,6 +273,14 @@ export const AssessmentPage: React.FC = () => {
                                 <span className={styles.statBadge}>
                                     Score: {score}
                                 </span>
+                                <button 
+                                    className={styles.exitQuizButton}
+                                    onClick={() => setShowExitConfirm(true)}
+                                    title="Exit Quiz"
+                                    aria-label="Exit Quiz"
+                                >
+                                    <X size={18} />
+                                </button>
                             </div>
                         </div>
                         <div className={styles.progressBarOuter}>
@@ -342,6 +408,130 @@ export const AssessmentPage: React.FC = () => {
                             </div>
                         )}
 
+                        {/* Rendering: Select Present Organs (Checklist) */}
+                        {currentQuestion.type === 'select_present_organs' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                <div className={styles.imageSection}>
+                                    <div className={styles.singleImageWrapper}>
+                                        <img 
+                                            className={styles.singleImage}
+                                            src={(currentQuestion as SelectPresentOrgansQuestion).image} 
+                                            alt="Multi-organ scan"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <p className={styles.questionText} style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--color-text-secondary)' }}>
+                                    {(currentQuestion as SelectPresentOrgansQuestion).questionText}
+                                </p>
+
+                                <div className={styles.checkboxGrid}>
+                                    {(currentQuestion as SelectPresentOrgansQuestion).options.map((opt, oIdx) => {
+                                        const isChecked = selectedOrgans.includes(opt);
+                                        const isCorrectOpt = (currentQuestion as SelectPresentOrgansQuestion).correctOptions.includes(opt);
+
+                                        let optClass = '';
+                                        if (isSubmitted) {
+                                            if (isChecked && isCorrectOpt) optClass = styles.correctChecked;
+                                            else if (isChecked && !isCorrectOpt) optClass = styles.incorrectChecked;
+                                            else if (!isChecked && isCorrectOpt) optClass = styles.correctUnchecked;
+                                        } else if (isChecked) {
+                                            optClass = styles.checked;
+                                        }
+
+                                        return (
+                                            <div
+                                                key={oIdx}
+                                                className={`${styles.checkboxItem} ${optClass} ${isSubmitted ? styles.submitted : ''}`}
+                                                onClick={() => handleOrganToggle(opt)}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className={styles.checkboxInput}
+                                                    checked={isChecked}
+                                                    onChange={() => {}} 
+                                                    disabled={isSubmitted}
+                                                />
+                                                <span style={{ color: '#ffffff' }}>{opt}</span>
+                                                {isSubmitted && isCorrectOpt && isChecked && <CheckCircle2 style={{ marginLeft: 'auto' }} size={16} color="var(--color-success)" />}
+                                                {isSubmitted && !isCorrectOpt && isChecked && <XCircle style={{ marginLeft: 'auto' }} size={16} color="var(--color-error)" />}
+                                                {isSubmitted && isCorrectOpt && !isChecked && <AlertCircle style={{ marginLeft: 'auto' }} size={16} color="var(--color-success)" />}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Rendering: Matching (Probe matching scan results) */}
+                        {currentQuestion.type === 'matching' && (
+                            <div className={styles.matchingLayout}>
+                                <p className={styles.questionText} style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--color-text-secondary)' }}>
+                                    {(currentQuestion as MatchingQuestion).questionText}
+                                </p>
+
+                                <div className={styles.matchingImages}>
+                                    {/* Probes Reference Image */}
+                                    <div className={styles.comparisonItem}>
+                                        <span className={styles.imageLabel}>Transducers (A, B, C)</span>
+                                        <div className={styles.singleImageWrapper}>
+                                            <img 
+                                                className={styles.singleImage}
+                                                src={(currentQuestion as MatchingQuestion).probesImage} 
+                                                alt="Transducers"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Scan results Reference Image */}
+                                    <div className={styles.comparisonItem}>
+                                        <span className={styles.imageLabel}>Scan Fields (1, 2, 3)</span>
+                                        <div className={styles.singleImageWrapper}>
+                                            <img 
+                                                className={styles.singleImage}
+                                                src={(currentQuestion as MatchingQuestion).resultsImage} 
+                                                alt="Resulting Scans"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className={styles.matchingPillsSection}>
+                                    <span className={styles.sectionTitle} style={{ fontSize: '0.8rem', marginBottom: '10px' }}>
+                                        Establish matches:
+                                    </span>
+                                    {(currentQuestion as MatchingQuestion).pairs.map((pair) => {
+                                        const userMatch = matchingAnswers[pair.key];
+                                        const correctMatch = (currentQuestion as MatchingQuestion).matches[pair.key];
+                                        const isCorrectMatch = userMatch === correctMatch;
+
+                                        let selectClass = '';
+                                        if (isSubmitted) {
+                                            selectClass = isCorrectMatch ? styles.correct : styles.wrong;
+                                        }
+
+                                        return (
+                                            <div key={pair.key} className={styles.matchingRow}>
+                                                <span className={styles.matchingLabel}>{pair.label}</span>
+                                                <select
+                                                    className={`${styles.dropdownSelect} ${selectClass}`}
+                                                    value={userMatch}
+                                                    onChange={(e) => handleMatchingSelect(pair.key, e.target.value)}
+                                                    disabled={isSubmitted}
+                                                    style={{ maxWidth: '100%' }}
+                                                >
+                                                    <option value="">-- Matches Scan Shape --</option>
+                                                    <option value="1">Image 1 (Rectangular)</option>
+                                                    <option value="2">Image 2 (Diverging sector/trapezoid)</option>
+                                                    <option value="3">Image 3 (Narrow sector)</option>
+                                                </select>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Feedback & Actions */}
                         {isSubmitted ? (
                             <div className={`${styles.feedbackBox} ${
@@ -352,11 +542,11 @@ export const AssessmentPage: React.FC = () => {
                                 }`}>
                                     {userAnswersLog[currentIdx]?.isCorrect ? (
                                         <>
-                                            <CheckCircle2 size={16} /> Correct Diagnosis
+                                            <CheckCircle2 size={16} /> Correct Assessment
                                         </>
                                     ) : (
                                         <>
-                                            <XCircle size={16} /> Incorrect Diagnosis
+                                            <XCircle size={16} /> Incorrect Assessment
                                         </>
                                     )}
                                 </div>
@@ -377,6 +567,10 @@ export const AssessmentPage: React.FC = () => {
                                     disabled={
                                         currentQuestion.type === 'multiple_choice' 
                                             ? selectedMcAnswer === null 
+                                            : currentQuestion.type === 'select_present_organs'
+                                            ? selectedOrgans.length === 0
+                                            : currentQuestion.type === 'matching'
+                                            ? (!matchingAnswers.A || !matchingAnswers.B || !matchingAnswers.C)
                                             : (!selectedNormalAbnormal.left || !selectedNormalAbnormal.right)
                                     }
                                 >
@@ -470,8 +664,40 @@ export const AssessmentPage: React.FC = () => {
                             <button className={styles.btnSuccess} onClick={startNewTest}>
                                 <RotateCcw size={16} /> Yes, Try Shuffled
                             </button>
-                            <button className={styles.btnSecondary} onClick={() => navigate('/')}>
+                            <button className={styles.btnSecondary} onClick={() => {
+                                setSelectedMode(null);
+                                navigate('/');
+                            }}>
                                 <Home size={16} /> No, Return Home
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Exit Confirmation Modal */}
+            {showExitConfirm && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalContent}>
+                        <div className={styles.modalHeader}>
+                            <AlertCircle size={24} />
+                            <h3 className={styles.modalTitle}>Exit Assessment</h3>
+                        </div>
+                        <p className={styles.modalDescription}>
+                            Are you sure you want to exit the quiz and return to the homepage? Your current progress and score for this session will be lost.
+                        </p>
+                        <div className={styles.modalActions}>
+                            <button 
+                                className={styles.btnSecondary} 
+                                onClick={() => setShowExitConfirm(false)}
+                            >
+                                Resume Quiz
+                            </button>
+                            <button 
+                                className={styles.btnDanger} 
+                                onClick={handleExitConfirm}
+                            >
+                                Exit Quiz
                             </button>
                         </div>
                     </div>

@@ -1,5 +1,5 @@
 // Training Modes
-export type TrainingMode = 'full' | 'assessment' | 'identification';
+export type TrainingMode = 'full' | 'theoretical' | 'assessment' | 'identification';
 
 // Case info from backend
 export interface CaseInfo {
