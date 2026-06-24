@@ -35,6 +35,10 @@ export const AssessmentPage: React.FC = () => {
     const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
     const [currentIdx, setCurrentIdx] = useState<number>(0);
     const [score, setScore] = useState<number>(0);
+    const [attemptCount, setAttemptCount] = useState<number>(() => {
+        const saved = localStorage.getItem('theoretical_attempt_count');
+        return saved ? parseInt(saved, 10) : 1;
+    });
     
     /* Current Question Answer States */
     const [selectedMcAnswer, setSelectedMcAnswer] = useState<number | null>(null);
@@ -50,19 +54,57 @@ export const AssessmentPage: React.FC = () => {
 
     /* Initialize/Shuffle Questions */
     const startNewTest = () => {
+        const currentAttempt = parseInt(localStorage.getItem('theoretical_attempt_count') || '1', 10);
+        
         const rawPool = [
             ...(questionsDatabase.clinical_case_assessment || []),
             ...(questionsDatabase.abdominal_anatomy_id || [])
         ];
-        // Shuffle helper
-        const shuffled = rawPool.sort(() => Math.random() - 0.5);
-        // Take 20 questions
-        setShuffledQuestions(shuffled.slice(0, 20));
+
+        // The 4 specific questions for the first attempt guided sequence
+        const firstAttemptFixedIds = ['sec1_q1', 'sec1_q2', 'sec4_q1', 'sec3_q11'];
+
+        let selectedQuestions: Question[] = [];
+
+        if (currentAttempt === 1) {
+            // First 2: normality vs abnormality, then organ detection, then probe type matching
+            const q1 = rawPool.find(q => q.id === 'sec1_q1');
+            const q2 = rawPool.find(q => q.id === 'sec1_q2');
+            const q3 = rawPool.find(q => q.id === 'sec4_q1');
+            const q4 = rawPool.find(q => q.id === 'sec3_q11');
+
+            // Shuffle the remaining 16 questions from the rest of the pool
+            const remainingPool = rawPool.filter(q => !firstAttemptFixedIds.includes(q.id));
+            const shuffledRemaining = [...remainingPool].sort(() => Math.random() - 0.5);
+            
+            if (q1 && q2 && q3 && q4) {
+                selectedQuestions = [q1, q2, q3, q4, ...shuffledRemaining.slice(0, 16)];
+            } else {
+                selectedQuestions = rawPool.sort(() => Math.random() - 0.5).slice(0, 20);
+            }
+        } else {
+            // Second time (or later): shuffle and show different questions other than these 4
+            const remainingPool = rawPool.filter(q => !firstAttemptFixedIds.includes(q.id));
+            const shuffledRemaining = [...remainingPool].sort(() => Math.random() - 0.5);
+            selectedQuestions = shuffledRemaining.slice(0, 20);
+        }
+
+        setShuffledQuestions(selectedQuestions);
         setCurrentIdx(0);
         setScore(0);
         setUserAnswersLog([]);
-        resetQuestionState(shuffled[0]);
+        resetQuestionState(selectedQuestions[0]);
         setStep('test');
+
+        // Increment the attempt count in state and localStorage for the next time
+        const nextAttempt = currentAttempt + 1;
+        setAttemptCount(nextAttempt);
+        localStorage.setItem('theoretical_attempt_count', nextAttempt.toString());
+    };
+
+    const handleResetAttempts = () => {
+        localStorage.setItem('theoretical_attempt_count', '1');
+        setAttemptCount(1);
     };
 
     const resetQuestionState = (question: Question) => {
@@ -251,7 +293,57 @@ export const AssessmentPage: React.FC = () => {
 
                     <div className={styles.sectionDivider} />
 
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <div className={styles.briefSection}>
+                        <h2 className={styles.sectionTitle}>Theoretical Assessment Brief</h2>
+                        <p className={styles.briefText}>
+                            This mode assesses your clinical ultrasound reasoning, spatial recognition, and probe mechanics.
+                        </p>
+                        <div className={styles.briefGrid}>
+                            <div className={styles.briefGridItem}>
+                                <strong>Purpose</strong>
+                                <span>Evaluate your diagnostic capability across clinical abdominal pathologies, scan orientation, and transducer selection.</span>
+                            </div>
+                            <div className={styles.briefGridItem}>
+                                <strong>Total Saved Questions</strong>
+                                <span>51 questions saved in the pool covering liver, kidneys, gallbladder, spleen, and transducer acoustics.</span>
+                            </div>
+                            <div className={styles.briefGridItem}>
+                                <strong>Test Question Numbers</strong>
+                                <span>20 questions drawn per quiz session.</span>
+                            </div>
+                            <div className={styles.briefGridItem}>
+                                <strong>Variety of Questions</strong>
+                                <span>Normality vs. Abnormality comparison dropdowns, Organ detection checklists, MCQ case studies, and Transducer matching.</span>
+                            </div>
+                            <div className={styles.briefGridItem}>
+                                <strong>Attempt #1 (Guided Sequence)</strong>
+                                <span>Features 2 Normality vs. Abnormality questions, 1 Organ Detection question, and 1 Probe matching question to establish fundamentals.</span>
+                            </div>
+                            <div className={styles.briefGridItem}>
+                                <strong>Attempt #2+ (Shuffled Variant)</strong>
+                                <span>Shuffled from the remaining 47 questions in the pool to ensure you do not repeat the introductory set.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={styles.sectionDivider} />
+
+                    <div className={styles.attemptStatusSection}>
+                        <span className={styles.attemptBadge}>
+                            Current Attempt: #{attemptCount}
+                        </span>
+                        {attemptCount > 1 && (
+                            <button 
+                                className={styles.btnResetAttempt}
+                                onClick={handleResetAttempts}
+                                title="Reset attempt history to start with the introductory guided sequence again"
+                            >
+                                <RotateCcw size={14} /> Reset Attempt History
+                            </button>
+                        )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--spacing-md)' }}>
                         <button className={styles.btnPrimary} onClick={startNewTest}>
                             Start Test <ArrowRight size={16} />
                         </button>
